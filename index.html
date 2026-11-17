@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mini Apps">
+  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="manifest" href="./manifest.json">
+  <title>Mini Apps — Sistema Maestro</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface-bright: #ffffff;
+      --surface-dim: #e9ecf1;
+      --on-surface: #111827;
+      --on-surface-variant: #6b7280;
+      --primary: #2563eb;
+      --accent-container: #dbeafe;
+      --positive: #047857;
+      --positive-container: #d1fae5;
+      --border: rgba(17, 24, 39, 0.08);
+      --r-m: 16px;
+      --r-full: 999px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1115;
+        --surface-bright: #1a1d24;
+        --surface-dim: #252932;
+        --on-surface: #f3f4f6;
+        --on-surface-variant: #9ca3af;
+        --primary: #60a5fa;
+        --accent-container: #1e3a8a;
+        --positive: #34d399;
+        --positive-container: #064e3b;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      touch-action: manipulation;
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--on-surface);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      padding:
+        max(18px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(28px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+    }
+    .hub-container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .hub-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .hub-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .hub-title {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .hub-sub {
+      margin: 6px 0 0;
+      font-size: 14px;
+      color: var(--on-surface-variant);
+      line-height: 1.4;
+    }
+    .status-chip {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--surface-bright);
+      color: var(--on-surface-variant);
+      border: 1px solid var(--border);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--positive);
+    }
+    .apps-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .app-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: var(--r-m);
+      background: var(--surface-bright);
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+    .app-card:active {
+      transform: scale(0.985);
+      opacity: 0.9;
+    }
+    .app-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 13px;
+      flex-shrink: 0;
+      display: block;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    }
+    .app-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .app-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .app-name {
+      font-size: 16px;
+      font-weight: 650;
+      color: var(--on-surface);
+    }
+    .app-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--r-full);
+      background: var(--accent-container);
+      color: var(--primary);
+    }
+    .app-desc {
+      margin: 4px 0 0;
+      font-size: 13px;
+      line-height: 1.38;
+      color: var(--on-surface-variant);
+    }
+    .app-chevron {
+      font-size: 18px;
+      color: var(--on-surface-variant);
+      flex-shrink: 0;
+    }
+    .info-card {
+      background: var(--surface-bright);
+      border: 1px solid var(--border);
+      border-radius: var(--r-m);
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--on-surface-variant);
+    }
+    .info-card strong {
+      color: var(--on-surface);
+    }
+    .info-card ol {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+    .info-card li + li {
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main class="hub-container">
+    <header class="hub-header">
+      <div>
+        <div class="hub-eyebrow">Sistema Maestro</div>
+        <h1 class="hub-title">Mini Apps Personales</h1>
+        <p class="hub-sub">Herramientas rápidas listas para usar desde la pantalla de inicio del iPhone, incluso sin conexión.</p>
+      </div>
+      <div class="status-chip" id="hub-status" aria-live="polite">
+        <span class="status-dot" id="hub-dot"></span>
+        <span id="hub-status-text">En línea</span>
+      </div>
+    </header>
+
+    <section class="apps-grid" id="apps-grid" aria-label="Aplicaciones disponibles">
+      <!-- Renderizado desde el registro de mini apps -->
+    </section>
+
+    <section class="info-card" aria-label="Cómo instalar en iPhone">
+      <strong>Tip iPhone (pantalla completa):</strong>
+      <ol>
+        <li>Para instalar solo la Calculadora NEAT como app directa, tocá <strong>Calculadora NEAT v7.1</strong> arriba, luego en Safari tocá <strong>Compartir</strong> y elegí <strong>Agregar a inicio</strong>.</li>
+        <li>O agregá este menú principal a inicio para acceder a todas tus futuras mini apps desde un único ícono.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+    // Registro central de mini apps: para sumar una nueva app, agregar una entrada aquí y precachearla en sw.js
+    const MINI_APPS = [
+      {
+        id: 'neat',
+        name: 'Calculadora NEAT',
+        tag: 'v7.1 · Offline',
+        description: 'Pasos equivalentes (8k / 10k), gasto bruto y neto por caminata, cinta inclinada y bici.',
+        href: './neat/index.html',
+        icon: './neat/icons/apple-touch-icon.png'
+      }
+    ];
+
+    const grid = document.getElementById('apps-grid');
+    grid.innerHTML = MINI_APPS.map((app) => `
+      <a class="app-card" href="${app.href}">
+        <img class="app-icon" src="${app.icon}" alt="Ícono ${app.name}" width="56" height="56">
+        <div class="app-body">
+          <div class="app-top">
+            <span class="app-name">${app.name}</span>
+            <span class="app-tag">${app.tag}</span>
+          </div>
+          <p class="app-desc">${app.description}</p>
+        </div>
+        <span class="app-chevron" aria-hidden="true">›</span>
+      </a>
+    `).join('');
+
+    const statusText = document.getElementById('hub-status-text');
+    const statusDot = document.getElementById('hub-dot');
+
+    function updateOnlineBadge(swReady = false) {
+      if (!navigator.onLine) {
+        statusText.textContent = 'Modo offline';
+        statusDot.style.background = '#d97706';
+      } else if (swReady) {
+        statusText.textContent = 'Offline listo';
+        statusDot.style.background = 'var(--positive)';
+      } else {
+        statusText.textContent = 'En línea';
+        statusDot.style.background = 'var(--positive)';
+      }
+    }
+
+    window.addEventListener('online', () => updateOnlineBadge(true));
+    window.addEventListener('offline', () => updateOnlineBadge(true));
+
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+      navigator.serviceWorker.register('./sw.js', { scope: './' })
+        .then(() => navigator.serviceWorker.ready)
+        .then(() => updateOnlineBadge(true))
+        .catch(() => updateOnlineBadge(false));
+    } else {
+      updateOnlineBadge(false);
+    }
+  </script>
+</body>
+</html>

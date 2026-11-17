@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="NEAT v7.1">
+  <title>Calculadora NEAT — Sistema Maestro v7.1</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface-bright: #ffffff;
+      --surface-dim: #eceef2;
+      --on-surface: #111827;
+      --on-surface-variant: #6b7280;
+      --primary: #2563eb;
+      --accent-container: #dbeafe;
+      --positive: #047857;
+      --positive-container: #d1fae5;
+      --error: #dc2626;
+      --error-container: #fee2e2;
+      --chart-1: #2575fc;
+      --chart-3: #228a49;
+      --chart-8: #d97706;
+      --r-s: 8px;
+      --r-m: 14px;
+      --r-full: 999px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1115;
+        --surface-bright: #1a1d24;
+        --surface-dim: #252932;
+        --on-surface: #f3f4f6;
+        --on-surface-variant: #9ca3af;
+        --primary: #60a5fa;
+        --accent-container: #1e3a8a;
+        --positive: #34d399;
+        --positive-container: #064e3b;
+        --error: #f87171;
+        --error-container: #7f1d1d;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      background: var(--bg);
+      color: var(--on-surface);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    }
+    .widget-container { max-width: 640px; margin: 0 auto; }
+    .preset-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .lumi-segmented-group { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; background: var(--surface-dim); padding: 4px; border-radius: var(--r-m); }
+    .lumi-segmented-btn {
+      flex: 1 1 auto;
+      border: none;
+      background: transparent;
+      color: var(--on-surface-variant);
+      padding: 8px 10px;
+      border-radius: var(--r-s);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .lumi-segmented-btn.is-active {
+      background: var(--surface-bright);
+      color: var(--on-surface);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+    .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .lumi-summary-card { background: var(--surface-bright); border-radius: var(--r-m); padding: 14px 16px; }
+    .lumi-label-s { font-size: 12px; color: var(--on-surface-variant); }
+    .kpi-val { font-size: 24px; line-height: 30px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--on-surface); margin-top: 4px; }
+    .kpi-sub { font-size: 12px; line-height: 16px; color: var(--on-surface-variant); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .status-pill { display: inline-block; padding: 3px 10px; border-radius: var(--r-full); font-size: 12px; font-weight: 600; margin-top: 6px; }
+    .split-stage { background: var(--surface-bright); border-radius: var(--r-m); padding: 14px 16px; margin-bottom: 14px; }
+    .split-bar { display: flex; height: 28px; border-radius: var(--r-s); overflow: hidden; gap: 2px; margin-bottom: 10px; background: var(--surface-dim); }
+    .split-seg { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; transition: width 0.15s ease; overflow: hidden; white-space: nowrap; color: #fff; }
+    .legend-row { display: flex; gap: 14px; font-size: 13px; color: var(--on-surface-variant); flex-wrap: wrap; }
+    .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .control-deck { display: flex; flex-direction: column; gap: 14px; padding: 16px; background: var(--surface-bright); border-radius: var(--r-m); }
+    .lumi-slider-row { display: flex; flex-direction: column; gap: 6px; }
+    .lumi-slider-label { font-size: 13px; font-weight: 500; color: var(--on-surface); }
+    .lumi-slider-container { display: flex; align-items: center; gap: 12px; }
+    .lumi-slider { flex: 1; accent-color: var(--primary); height: 6px; cursor: pointer; }
+    .lumi-slider-value {
+      min-width: 72px;
+      text-align: center;
+      background: var(--surface-dim);
+      color: var(--on-surface);
+      padding: 8px 10px;
+      border-radius: var(--r-s);
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-container">
+    <div class="preset-bar">
+      <div class="lumi-segmented-group" role="group" aria-label="Combinaciones rápidas">
+        <button type="button" class="lumi-segmented-btn is-active" data-preset="gym">Día Gym (8k)</button>
+        <button type="button" class="lumi-segmented-btn" data-preset="rest">Descanso (10k)</button>
+        <button type="button" class="lumi-segmented-btn" data-preset="incline">Solo Cinta 6%</button>
+        <button type="button" class="lumi-segmented-btn" data-preset="bike">Solo Bici 20 km/h</button>
+      </div>
+    </div>
+
+    <div class="kpi-strip">
+      <div class="lumi-summary-card">
+        <div class="lumi-label-s">Pasos Equivalentes</div>
+        <div class="kpi-val" id="out-steps">8.220</div>
+        <div id="out-badge" class="status-pill">Piso 8k alcanzado</div>
+      </div>
+      <div class="lumi-summary-card">
+        <div class="lumi-label-s">Gasto Bruto / Neto</div>
+        <div class="kpi-val" id="out-kcal">344 kcal</div>
+        <div class="kpi-sub" id="out-net">Neto extra: 274 kcal</div>
+      </div>
+      <div class="lumi-summary-card">
+        <div class="lumi-label-s">Tiempo / Distancia</div>
+        <div class="kpi-val" id="out-time">55 min</div>
+        <div class="kpi-sub" id="out-dist">Recorrido: 4,6 km</div>
+      </div>
+    </div>
+
+    <div class="split-stage">
+      <div class="split-bar" role="img" aria-label="Aporte calórico por modalidad">
+        <div id="seg-street" class="split-seg" style="background: var(--chart-1); width: 27%;">27%</div>
+        <div id="seg-incline" class="split-seg" style="background: var(--chart-3); width: 73%;">73%</div>
+        <div id="seg-bike" class="split-seg" style="background: var(--chart-8); width: 0%;"></div>
+      </div>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background: var(--chart-1);"></span>Calle 5 km/h (<span id="leg-street">92 kcal</span>)</span>
+        <span><span class="legend-dot" style="background: var(--chart-3);"></span>Cinta inclinada (<span id="leg-incline">252 kcal</span>)</span>
+        <span><span class="legend-dot" style="background: var(--chart-8);"></span>Bici 20 km/h (<span id="leg-bike">0 kcal</span>)</span>
+      </div>
+    </div>
+
+    <div class="control-deck">
+      <div class="lumi-slider-row">
+        <label class="lumi-slider-label" for="in-weight">Peso corporal</label>
+        <div class="lumi-slider-container">
+          <input id="in-weight" class="lumi-slider" type="range" min="65.0" max="85.0" step="0.1" value="72.7">
+          <div id="val-weight" class="lumi-slider-value">72,7 kg</div>
+        </div>
+      </div>
+      <div class="lumi-slider-row">
+        <label class="lumi-slider-label" for="in-street">Calle 5 km/h</label>
+        <div class="lumi-slider-container">
+          <input id="in-street" class="lumi-slider" type="range" min="0" max="100" step="5" value="20">
+          <div id="val-street" class="lumi-slider-value">20 min</div>
+        </div>
+      </div>
+      <div class="lumi-slider-row">
+        <label class="lumi-slider-label" for="in-incline-min">Cinta 5 km/h</label>
+        <div class="lumi-slider-container">
+          <input id="in-incline-min" class="lumi-slider" type="range" min="0" max="80" step="5" value="35">
+          <div id="val-incline-min" class="lumi-slider-value">35 min</div>
+        </div>
+      </div>
+      <div class="lumi-slider-row">
+        <label class="lumi-slider-label" for="in-grade">Inclinación cinta</label>
+        <div class="lumi-slider-container">
+          <input id="in-grade" class="lumi-slider" type="range" min="2" max="9" step="1" value="6">
+          <div id="val-grade" class="lumi-slider-value">6%</div>
+        </div>
+      </div>
+      <div class="lumi-slider-row">
+        <label class="lumi-slider-label" for="in-bike">Bici 20 km/h</label>
+        <div class="lumi-slider-container">
+          <input id="in-bike" class="lumi-slider" type="range" min="0" max="60" step="5" value="0">
+          <div id="val-bike" class="lumi-slider-value">0 min</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmtInt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+    const fmtDec = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+    const weightEl = document.getElementById('in-weight');
+    const streetEl = document.getElementById('in-street');
+    const inclineMinEl = document.getElementById('in-incline-min');
+    const gradeEl = document.getElementById('in-grade');
+    const bikeEl = document.getElementById('in-bike');
+    const presetBtns = document.querySelectorAll('.lumi-segmented-btn');
+
+    const PRESETS = {
+      gym: { street: 20, inclineMin: 35, grade: 6, bike: 0 },
+      rest: { street: 30, inclineMin: 40, grade: 6, bike: 0 },
+      incline: { street: 0, inclineMin: 55, grade: 6, bike: 0 },
+      bike: { street: 0, inclineMin: 0, grade: 6, bike: 45 }
+    };
+
+    function updateCalc() {
+      const weight = parseFloat(weightEl.value);
+      const streetMin = parseFloat(streetEl.value);
+      const inclineMin = parseFloat(inclineMinEl.value);
+      const grade = parseFloat(gradeEl.value);
+      const bikeMin = parseFloat(bikeEl.value);
+
+      const scale = weight / 72.5;
+      const restKcalPerMin = (3.5 * weight) / 200;
+
+      const streetKcal = streetMin * (4.59 * scale);
+      const inclineRate = (4.59 + 0.415 * grade) * scale;
+      const inclineKcal = inclineMin * inclineRate;
+      const bikeKcal = bikeMin * (9.65 * scale);
+
+      const totalKcal = streetKcal + inclineKcal + bikeKcal;
+      const totalMin = streetMin + inclineMin + bikeMin;
+      const netKcal = Math.max(0, totalKcal - (totalMin * restKcalPerMin));
+
+      const target10kKcal = 418 * scale;
+      const eqSteps = Math.round((totalKcal / target10kKcal) * 10000);
+      const totalKm = ((streetMin + inclineMin) * 5 + bikeMin * 20) / 60;
+
+      document.getElementById('val-weight').textContent = `${fmtDec.format(weight)} kg`;
+      document.getElementById('val-street').textContent = `${streetMin} min`;
+      document.getElementById('val-incline-min').textContent = `${inclineMin} min`;
+      document.getElementById('val-grade').textContent = `${grade}%`;
+      document.getElementById('val-bike').textContent = `${bikeMin} min`;
+
+      document.getElementById('out-steps').textContent = fmtInt.format(eqSteps);
+      document.getElementById('out-kcal').textContent = `${fmtInt.format(totalKcal)} kcal`;
+      document.getElementById('out-net').textContent = `Neto extra: ${fmtInt.format(netKcal)} kcal`;
+      document.getElementById('out-time').textContent = `${totalMin} min`;
+      document.getElementById('out-dist').textContent = `Recorrido: ${fmtDec.format(totalKm)} km`;
+
+      const badge = document.getElementById('out-badge');
+      if (eqSteps >= 10000) {
+        badge.textContent = 'Meta 10k alcanzada';
+        badge.style.background = 'var(--positive-container)';
+        badge.style.color = 'var(--positive)';
+      } else if (eqSteps >= 8000) {
+        badge.textContent = 'Piso 8k alcanzado';
+        badge.style.background = 'var(--accent-container)';
+        badge.style.color = 'var(--primary)';
+      } else {
+        badge.textContent = `Faltan ${fmtInt.format(8000 - eqSteps)} para 8k`;
+        badge.style.background = 'var(--error-container)';
+        badge.style.color = 'var(--error)';
+      }
+
+      document.getElementById('leg-street').textContent = `${fmtInt.format(streetKcal)} kcal`;
+      document.getElementById('leg-incline').textContent = `${fmtInt.format(inclineKcal)} kcal`;
+      document.getElementById('leg-bike').textContent = `${fmtInt.format(bikeKcal)} kcal`;
+
+      const segS = document.getElementById('seg-street');
+      const segI = document.getElementById('seg-incline');
+      const segB = document.getElementById('seg-bike');
+
+      if (totalKcal > 0) {
+        const pS = Math.round((streetKcal / totalKcal) * 100);
+        const pI = Math.round((inclineKcal / totalKcal) * 100);
+        const pB = Math.max(0, 100 - pS - pI);
+        segS.style.width = `${pS}%`;
+        segS.textContent = pS >= 10 ? `${pS}%` : '';
+        segI.style.width = `${pI}%`;
+        segI.textContent = pI >= 10 ? `${pI}%` : '';
+        segB.style.width = `${pB}%`;
+        segB.textContent = pB >= 10 ? `${pB}%` : '';
+      } else {
+        [segS, segI, segB].forEach(s => { s.style.width = '0%'; s.textContent = ''; });
+      }
+    }
+
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        presetBtns.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const p = PRESETS[btn.dataset.preset];
+        streetEl.value = p.street;
+        inclineMinEl.value = p.inclineMin;
+        gradeEl.value = p.grade;
+        bikeEl.value = p.bike;
+        updateCalc();
+      });
+    });
+
+    [weightEl, streetEl, inclineMinEl, gradeEl, bikeEl].forEach(el => {
+      el.addEventListener('input', () => {
+        presetBtns.forEach(b => b.classList.remove('is-active'));
+        updateCalc();
+      });
+    });
+
+    updateCalc();
+  </script>
+</body>
+</html>
