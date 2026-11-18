@@ -217,9 +217,12 @@
     <section class="info-card" aria-label="Cómo instalar en iPhone">
       <strong>Tip iPhone (pantalla completa):</strong>
       <ol>
-        <li>Para instalar solo la Calculadora NEAT como app directa, tocá <strong>Calculadora NEAT v7.1</strong> arriba, luego en Safari tocá <strong>Compartir</strong> y elegí <strong>Agregar a inicio</strong>.</li>
-        <li>O agregá este menú principal a inicio para acceder a todas tus futuras mini apps desde un único ícono.</li>
+        <li>Para instalar solo la Calculadora NEAT o Gym Tracker como app directa, tocala arriba, luego en Safari tocá <strong>Compartir</strong> y elegí <strong>Agregar a inicio</strong>.</li>
+        <li>O agregá este menú principal a inicio para acceder a todas tus mini apps desde un único ícono.</li>
       </ol>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="hub-clear-cache-btn" type="button" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-dim);color:var(--on-surface);font-size:12px;font-weight:700;cursor:pointer;">↻ Limpiar caché y actualizar</button>
+      </div>
     </section>
   </main>
 
@@ -278,7 +281,29 @@
     window.addEventListener('online', () => updateOnlineBadge(true));
     window.addEventListener('offline', () => updateOnlineBadge(true));
 
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+    async function clearAppCacheAndReload() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch (_) {}
+      location.replace(location.pathname + '?updated=' + Date.now());
+    }
+
+    document.getElementById('hub-clear-cache-btn').addEventListener('click', () => {
+      statusText.textContent = 'Actualizando...';
+      clearAppCacheAndReload();
+    });
+
+    if (new URLSearchParams(location.search).get('reset') === '1') {
+      statusText.textContent = 'Limpiando caché...';
+      clearAppCacheAndReload();
+    } else if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
       navigator.serviceWorker.register('./sw.js', { scope: './' })
         .then(() => navigator.serviceWorker.ready)
         .then(() => updateOnlineBadge(true))
