@@ -3635,8 +3635,8 @@
         });
       });
 
-      // Spotify PKCE OAuth
-      const redirectUri = `${location.origin}${location.pathname}`;
+      // Spotify PKCE OAuth (normalizar sin index.html para coincidir siempre con /gym/)
+      const redirectUri = `${location.origin}${location.pathname.replace(/index\.html$/, '')}`;
       document.getElementById('sp-redirect-uri').value = redirectUri;
       document.getElementById('sp-client-id-input').value = spotifyCfg.clientId || '';
 
