@@ -893,6 +893,22 @@
       color: #ffffff;
       border-color: transparent;
     }
+    .uni-checks {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .set-check.uni {
+      width: 38px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .set-check.uni.checked {
+      background: var(--positive-bright);
+      color: #ffffff;
+      border-color: transparent;
+    }
 
     /* RIR & Notes */
     .rir-row {
@@ -1063,29 +1079,70 @@
       grid-column: 1 / -1;
     }
 
-    /* Floating Rest Timer */
+    /* Floating Bottom Dock (Global Clock + Rest Timer) */
     .rest-bar {
       position: fixed;
       left: 50%;
-      bottom: calc(10px + env(safe-area-inset-bottom));
+      bottom: calc(8px + env(safe-area-inset-bottom));
       transform: translateX(-50%);
-      width: calc(100% - 24px);
+      width: calc(100% - 20px);
       max-width: 656px;
-      background: #111827;
+      background: rgba(17, 24, 39, 0.96);
+      backdrop-filter: blur(12px);
       color: #f9fafb;
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--r-l);
-      padding: 10px 12px;
+      padding: 8px 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
       z-index: 50;
-      display: none;
-    }
-    .rest-bar.visible {
       display: block;
     }
     .rest-bar.done-flash {
       background: #065f46;
       border-color: #34d399;
+    }
+    .dock-global-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .dock-clock-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dock-clock {
+      font-size: 16px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #f9fafb;
+    }
+    .dock-clock.running {
+      color: #34d399;
+    }
+    .dock-mini-btn {
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .dock-mini-btn.primary {
+      background: #2563eb;
+      border-color: transparent;
+    }
+    .rest-subpanel {
+      display: none;
+      margin-top: 7px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .rest-subpanel.visible {
+      display: block;
     }
     .rest-inner {
       display: flex;
@@ -1376,7 +1433,14 @@
       <section class="export-card" aria-label="Exportar entrenamiento">
         <div class="export-head">
           <h3>📋 Resumen &amp; Exportación Keep</h3>
-          <button class="tiny-btn" id="export-mode-toggle" type="button">Mostrar: Todos</button>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="rep-stepper" style="padding:1px 3px;">
+              <button class="rep-btn" id="week-minus-btn" type="button" style="width:24px;height:24px;font-size:13px;">−</button>
+              <span id="week-badge-label" style="font-size:11px;font-weight:750;padding:0 5px;">Sem 9</span>
+              <button class="rep-btn" id="week-plus-btn" type="button" style="width:24px;height:24px;font-size:13px;">+</button>
+            </div>
+            <button class="tiny-btn" id="export-mode-toggle" type="button">Mostrar: Todos</button>
+          </div>
         </div>
         <pre class="keep-preview" id="keep-preview"></pre>
         <div class="export-btns">
@@ -1406,22 +1470,36 @@
     </section>
   </main>
 
-  <!-- Floating Rest Timer Bar -->
+  <!-- Floating Bottom Dock (Global Clock + Rest Timer) -->
   <aside class="rest-bar" id="rest-bar" aria-live="polite">
-    <div class="rest-inner">
-      <div>
-        <div class="rest-time" id="rest-time-display">01:30</div>
-        <div class="rest-label" id="rest-ex-label">Descanso activo</div>
+    <div class="dock-global-row">
+      <div class="dock-clock-group">
+        <span style="font-size:13px;">🕒</span>
+        <span class="dock-clock" id="dock-workout-clock">00:00:00</span>
+        <button class="dock-mini-btn primary" id="dock-wt-toggle" type="button">▶</button>
+        <button class="dock-mini-btn" id="dock-wt-reset" type="button" title="Reiniciar reloj">↺</button>
       </div>
-      <div class="rest-actions">
-        <button class="rest-btn" id="rest-minus-btn" type="button">-15s</button>
-        <button class="rest-btn" id="rest-plus-btn" type="button">+15s</button>
-        <button class="rest-btn" id="rest-restart-btn" type="button">↻</button>
-        <button class="rest-btn" id="rest-stop-btn" type="button">✕</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span id="dock-sets-count" style="font-size:11px;font-weight:700;color:#cbd5e1;">0/0</span>
+        <button class="dock-mini-btn" id="dock-manual-rest" type="button">⏱ 90s</button>
       </div>
     </div>
-    <div class="rest-progress">
-      <div class="rest-progress-bar" id="rest-progress-bar"></div>
+    <div class="rest-subpanel" id="rest-subpanel">
+      <div class="rest-inner">
+        <div>
+          <div class="rest-time" id="rest-time-display">01:30</div>
+          <div class="rest-label" id="rest-ex-label">Descanso activo</div>
+        </div>
+        <div class="rest-actions">
+          <button class="rest-btn" id="rest-minus-btn" type="button">-15s</button>
+          <button class="rest-btn" id="rest-plus-btn" type="button">+15s</button>
+          <button class="rest-btn" id="rest-restart-btn" type="button">↻</button>
+          <button class="rest-btn" id="rest-stop-btn" type="button">✕</button>
+        </div>
+      </div>
+      <div class="rest-progress">
+        <div class="rest-progress-bar" id="rest-progress-bar"></div>
+      </div>
     </div>
   </aside>
 
@@ -1583,6 +1661,7 @@
         remo_esternal: {
           id: 'remo_esternal',
           name: 'Remo en Máquina con Apoyo Esternal',
+          isBack: true,
           repMin: 10,
           repMax: 12,
           defaultSets: [12, 12, 12],
@@ -1647,6 +1726,7 @@
         jalon_pecho: {
           id: 'jalon_pecho',
           name: 'Jalón al Pecho',
+          isBack: true,
           repMin: 10,
           repMax: 12,
           defaultSets: [11, 11, 11],
@@ -1672,6 +1752,7 @@
         dominadas: {
           id: 'dominadas',
           name: 'Dominadas',
+          isBack: true,
           repMin: 8,
           repMax: 12,
           defaultSets: [10, 10, 10],
@@ -1844,6 +1925,7 @@
         step_down: {
           id: 'step_down',
           name: 'Step Down en Cajón / Step',
+          isUnilateral: true,
           repMin: 12,
           repMax: 15,
           defaultSets: [14, 14, 14],
@@ -1904,6 +1986,7 @@
         gemelos_step: {
           id: 'gemelos_step',
           name: 'Gemelos Parado a 1 Pierna en Step',
+          isUnilateral: false,
           repMin: 12,
           repMax: 15,
           defaultSets: [14, 14, 14, 14],
@@ -1912,7 +1995,7 @@
           step: 2.5,
           equipType: 'disco / mancuerna',
           defaultRir: '1-2',
-          restSec: 60,
+          restSec: 90,
           badges: ['Pausa 2 s abajo · Por pierna'],
           cue: 'Progresión hasta 15 repeticiones con disco de 10 kg abrazado al pecho y pausa estricta de 2 s en estiramiento abajo.',
           refS7: 'S7: Disco 10 kg · 4×12/pierna → Objetivo: 4×14/pierna',
@@ -1966,6 +2049,7 @@
         deadbug: {
           id: 'deadbug',
           name: 'Deadbug Controlado',
+          isUnilateral: true,
           repMin: 10,
           repMax: 12,
           defaultSets: [11, 11, 11],
@@ -2007,6 +2091,7 @@
         elev_pierna_tobillera: {
           id: 'elev_pierna_tobillera',
           name: 'Elevaciones Laterales de Pierna c/Tobillera',
+          isUnilateral: true,
           repMin: 10,
           repMax: 15,
           defaultSets: [11, 11, 11, 11],
@@ -2048,6 +2133,7 @@
         pallof_polea: {
           id: 'pallof_polea',
           name: 'Pallof Rotado en Polea (Sin Press)',
+          isUnilateral: true,
           repMin: 10,
           repMax: 12,
           defaultSets: [10, 10, 10],
@@ -2203,6 +2289,8 @@
           order: spec.order || '•',
           name: spec.customName || cat.name,
           isPosture: !!cat.isPosture,
+          isBack: !!cat.isBack,
+          isUnilateral: cat.isUnilateral === true,
           variant: variantObj.name,
           variants: (cat.variants || []).map((v) => v.name),
           weight: weight,
@@ -2213,7 +2301,7 @@
           equipType: cat.equipType || 'libre',
           repMin: spec.repMinOverride || cat.repMin || 8,
           repMax: spec.repMaxOverride || cat.repMax || 12,
-          sets: repsArr.map((r) => ({ reps: r, weight: weight, done: false })),
+          sets: repsArr.map((r) => ({ reps: r, weight: weight, done: false, doneL: false, doneR: false })),
           rir: spec.rirOverride || cat.defaultRir || '1-2',
           restSec: spec.restOverride !== undefined ? spec.restOverride : (cat.restSec || 90),
           badges: spec.badgesOverride || cat.badges || [],
@@ -2254,10 +2342,19 @@
         return tpl.exercises.map((spec) => createExerciseInstance(spec));
       }
 
+      function getAutoWeekNumber() {
+        // Semana 1 inició el 21/09/2026 -> 16/11/2026..22/11/2026 = Semana 9
+        const anchor = new Date(2026, 8, 21, 0, 0, 0);
+        const now = new Date();
+        const diffDays = Math.floor((now - anchor) / 86400000);
+        return Math.max(1, Math.floor(diffDays / 7) + 1);
+      }
+
       function getDefaultState() {
         return {
           activeDay: 'torso_a',
           exportOnlyDone: false,
+          weekOverride: null,
           workoutTimer: { status: 'idle', startedAt: null, accumulatedMs: 0 },
           restTimer: { running: false, endAt: null, totalSec: 90, label: '' },
           days: {
@@ -2271,11 +2368,32 @@
 
       const DEFAULT_SPOTIFY_CLIENT_ID = '34bf96d6874a4d28a06c59236be5f70f';
 
+      function migrateSavedState(parsed) {
+        const days = parsed.days || {};
+        Object.keys(days).forEach((dk) => {
+          (days[dk] || []).forEach((ex) => {
+            const cat = EXERCISE_CATALOG[ex.catId];
+            if (ex.catId === 'gemelos_step') {
+              ex.isUnilateral = false;
+              ex.restSec = 90;
+            } else if (cat) {
+              ex.isBack = !!cat.isBack;
+              if (ex.isUnilateral === undefined) ex.isUnilateral = !!cat.isUnilateral;
+            }
+            (ex.sets || []).forEach((s) => {
+              if (s.doneL === undefined) s.doneL = !!s.done;
+              if (s.doneR === undefined) s.doneR = !!s.done;
+            });
+          });
+        });
+      }
+
       function loadState() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
           if (!raw) return getDefaultState();
           const parsed = JSON.parse(raw);
+          migrateSavedState(parsed);
           const def = getDefaultState();
           return {
             ...def,
@@ -2623,25 +2741,34 @@
       function renderWorkoutClock() {
         const clockEl = document.getElementById('workout-clock');
         const toggleBtn = document.getElementById('wt-toggle-btn');
+        const dockClockEl = document.getElementById('dock-workout-clock');
+        const dockToggleBtn = document.getElementById('dock-wt-toggle');
         const wt = state.workoutTimer;
         const nextText = formatClock(getWorkoutElapsedMs());
         if (nextText !== lastClockText) {
           clockEl.textContent = nextText;
+          if (dockClockEl) dockClockEl.textContent = nextText;
           lastClockText = nextText;
         }
         if (wt.status === 'running') {
           clockEl.classList.add('running');
+          if (dockClockEl) dockClockEl.classList.add('running');
           if (toggleBtn.textContent !== '⏸ Pausar') toggleBtn.textContent = '⏸ Pausar';
+          if (dockToggleBtn && dockToggleBtn.textContent !== '⏸') dockToggleBtn.textContent = '⏸';
         } else if (wt.status === 'paused') {
           clockEl.classList.remove('running');
+          if (dockClockEl) dockClockEl.classList.remove('running');
           if (toggleBtn.textContent !== '▶ Reanudar') toggleBtn.textContent = '▶ Reanudar';
+          if (dockToggleBtn && dockToggleBtn.textContent !== '▶') dockToggleBtn.textContent = '▶';
         } else {
           clockEl.classList.remove('running');
+          if (dockClockEl) dockClockEl.classList.remove('running');
           if (toggleBtn.textContent !== '▶ Iniciar') toggleBtn.textContent = '▶ Iniciar';
+          if (dockToggleBtn && dockToggleBtn.textContent !== '▶') dockToggleBtn.textContent = '▶';
         }
       }
 
-      document.getElementById('wt-toggle-btn').addEventListener('click', () => {
+      function toggleWorkoutTimer() {
         unlockAudio();
         const wt = state.workoutTimer;
         if (wt.status === 'running') {
@@ -2654,13 +2781,18 @@
         }
         saveState();
         renderWorkoutClock();
-      });
+      }
 
-      document.getElementById('wt-reset-btn').addEventListener('click', () => {
+      function resetWorkoutTimer() {
         state.workoutTimer = { status: 'idle', startedAt: null, accumulatedMs: 0 };
         saveState();
         renderWorkoutClock();
-      });
+      }
+
+      document.getElementById('wt-toggle-btn').addEventListener('click', toggleWorkoutTimer);
+      document.getElementById('wt-reset-btn').addEventListener('click', resetWorkoutTimer);
+      document.getElementById('dock-wt-toggle').addEventListener('click', toggleWorkoutTimer);
+      document.getElementById('dock-wt-reset').addEventListener('click', resetWorkoutTimer);
 
       let restAlarmFired = false;
       function startRestTimer(seconds, label) {
@@ -2689,17 +2821,17 @@
       let lastRestPct = '';
       function renderRestBar() {
         const bar = document.getElementById('rest-bar');
+        const sub = document.getElementById('rest-subpanel');
         const rt = state.restTimer;
         if (!rt.running || !rt.endAt) {
-          if (bar.classList.contains('visible')) {
-            bar.classList.remove('visible', 'done-flash');
-          }
+          if (sub.classList.contains('visible')) sub.classList.remove('visible');
+          if (bar.classList.contains('done-flash')) bar.classList.remove('done-flash');
           lastRestTimeText = '';
           lastRestLabelText = '';
           lastRestPct = '';
           return;
         }
-        if (!bar.classList.contains('visible')) bar.classList.add('visible');
+        if (!sub.classList.contains('visible')) sub.classList.add('visible');
         const remMs = rt.endAt - Date.now();
         const remSec = Math.max(0, Math.ceil(remMs / 1000));
         const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
@@ -2755,6 +2887,10 @@
         unlockAudio();
         startRestTimer(90, 'Descanso manual (90s)');
       });
+      document.getElementById('dock-manual-rest').addEventListener('click', () => {
+        unlockAudio();
+        startRestTimer(90, 'Descanso manual (90s)');
+      });
 
       setInterval(() => {
         if (state.workoutTimer.status === 'running') renderWorkoutClock();
@@ -2776,6 +2912,8 @@
           });
         });
         document.getElementById('hud-sets-count').textContent = `${done} / ${total} series`;
+        const dockSets = document.getElementById('dock-sets-count');
+        if (dockSets) dockSets.textContent = `${done}/${total}`;
         const pct = total > 0 ? Math.round((done / total) * 100) : 0;
         document.getElementById('hud-progress-fill').style.width = `${pct}%`;
       }
@@ -3177,7 +3315,7 @@
         plusSetBtn.textContent = '+ Serie';
         plusSetBtn.addEventListener('click', () => {
           const last = ex.sets[ex.sets.length - 1] || { reps: ex.repMin, weight: ex.weight };
-          ex.sets.push({ reps: last.reps, weight: last.weight ?? ex.weight, done: false });
+          ex.sets.push({ reps: last.reps, weight: last.weight ?? ex.weight, done: false, doneL: false, doneR: false });
           saveState();
           refreshExerciseCard(card, ex, exIdx);
         });
@@ -3190,9 +3328,22 @@
         card.appendChild(setsHead);
 
         // Sets Rows
+        const isUni = (function () {
+          if (ex.catId === 'gemelos_step') return false;
+          if (ex.isUnilateral) return true;
+          return /unilateral/i.test(ex.variant || '') || /unilateral/i.test(ex.name || '');
+        })();
+
+        const isBackEx = (function () {
+          if (ex.isBack) return true;
+          const t = `${ex.name || ''} ${ex.variant || ''}`.toLowerCase();
+          return t.includes('remo') || t.includes('jalón') || t.includes('jalon') || t.includes('dominada');
+        })();
+
         const setsList = document.createElement('div');
         setsList.className = 'sets-list';
         ex.sets.forEach((s, sIdx) => {
+          const isLastSet = sIdx === ex.sets.length - 1;
           const row = document.createElement('div');
           row.className = `set-row${s.done ? ' done' : ''}`;
 
@@ -3270,25 +3421,69 @@
             ctrls.appendChild(kgLbl);
           }
 
-          const checkBtn = document.createElement('button');
-          checkBtn.type = 'button';
-          checkBtn.className = 'set-check';
-          checkBtn.textContent = s.done ? '✓' : '○';
-          checkBtn.setAttribute('aria-label', `Completar serie ${sIdx + 1}`);
-          checkBtn.addEventListener('click', () => {
-            unlockAudio();
-            s.done = !s.done;
-            if (s.done) {
-              startWorkoutTimerIfIdle();
-              startRestTimer(ex.restSec || 90, `${ex.name} · S${sIdx + 1}`);
-            }
-            saveState();
-            refreshExerciseCard(card, ex, exIdx);
-          });
-
           row.appendChild(idxSpan);
           row.appendChild(ctrls);
-          row.appendChild(checkBtn);
+
+          if (isUni) {
+            const uniWrap = document.createElement('div');
+            uniWrap.className = 'uni-checks';
+
+            const makeSideBtn = (sideKey, sideLabel) => {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              const checked = !!s[sideKey];
+              btn.className = `set-check uni${checked ? ' checked' : ''}`;
+              btn.textContent = checked ? `${sideLabel}✓` : sideLabel;
+              btn.setAttribute('aria-label', `Serie ${sIdx + 1} lado ${sideLabel}`);
+              btn.addEventListener('click', () => {
+                unlockAudio();
+                s[sideKey] = !s[sideKey];
+                const bothDone = !!(s.doneL && s.doneR);
+                s.done = bothDone;
+                if (s[sideKey]) {
+                  startWorkoutTimerIfIdle();
+                  if (!bothDone) {
+                    startRestTimer(90, `${ex.name} · S${sIdx + 1} (cambio de lado 1:30)`);
+                  } else if (isLastSet) {
+                    startRestTimer(120, `Cambio de ejercicio (2:00)`);
+                  } else {
+                    startRestTimer(ex.restSec || 90, `${ex.name} · S${sIdx + 1}`);
+                  }
+                }
+                saveState();
+                refreshExerciseCard(card, ex, exIdx);
+              });
+              return btn;
+            };
+
+            uniWrap.appendChild(makeSideBtn('doneL', 'I'));
+            uniWrap.appendChild(makeSideBtn('doneR', 'D'));
+            row.appendChild(uniWrap);
+          } else {
+            const checkBtn = document.createElement('button');
+            checkBtn.type = 'button';
+            checkBtn.className = 'set-check';
+            checkBtn.textContent = s.done ? '✓' : '○';
+            checkBtn.setAttribute('aria-label', `Completar serie ${sIdx + 1}`);
+            checkBtn.addEventListener('click', () => {
+              unlockAudio();
+              s.done = !s.done;
+              s.doneL = s.done;
+              s.doneR = s.done;
+              if (s.done) {
+                startWorkoutTimerIfIdle();
+                if (isLastSet) {
+                  startRestTimer(120, `Cambio de ejercicio (2:00)`);
+                } else {
+                  startRestTimer(ex.restSec || 90, `${ex.name} · S${sIdx + 1}`);
+                }
+              }
+              saveState();
+              refreshExerciseCard(card, ex, exIdx);
+            });
+            row.appendChild(checkBtn);
+          }
+
           setsList.appendChild(row);
         });
         card.appendChild(setsList);
@@ -3298,7 +3493,7 @@
         rirRow.className = 'rir-row';
         const rirLabel = document.createElement('span');
         rirLabel.className = 'rir-label';
-        rirLabel.textContent = `RIR (${ex.restSec || 90}s descanso):`;
+        rirLabel.textContent = isUni ? `RIR (90s/lado · ${ex.restSec || 90}s):` : `RIR (${ex.restSec || 90}s descanso):`;
 
         const rirPills = document.createElement('div');
         rirPills.className = 'rir-pills';
@@ -3318,13 +3513,13 @@
         rirRow.appendChild(rirPills);
         card.appendChild(rirRow);
 
-        // Notes + Quick Tags
+        // Notes + Quick Tags (Straps solo en ejercicios de espalda)
         const notesWrap = document.createElement('div');
         notesWrap.className = 'notes-wrap';
 
         const qNotes = document.createElement('div');
         qNotes.className = 'quick-notes';
-        QUICK_NOTES.forEach((qn) => {
+        QUICK_NOTES.filter((qn) => qn.key !== 'straps' || isBackEx).forEach((qn) => {
           const active = (ex.notes || '').includes(qn.text);
           const qBtn = document.createElement('button');
           qBtn.type = 'button';
@@ -3374,6 +3569,12 @@
       // ============================================================
       // 7. KEEP EXPORT & SESSION SAVING
       // ============================================================
+      function getCurrentWeekNumber() {
+        return typeof state.weekOverride === 'number' && state.weekOverride >= 1
+          ? state.weekOverride
+          : getAutoWeekNumber();
+      }
+
       function buildKeepText(dayId, exercises, durationMs, onlyDone) {
         const tpl = DAYS_TEMPLATE[dayId];
         const today = new Date();
@@ -3381,7 +3582,10 @@
         const mins = Math.max(1, Math.round(durationMs / 60000));
         const durText = durationMs > 0 ? ` · ⏱ ${mins} min` : '';
 
-        const lines = [`${tpl.title.toUpperCase()} (${dateStr})${durText}`];
+        const lines = [
+          `Semana ${getCurrentWeekNumber()}`,
+          `${tpl.title.toUpperCase()} (${dateStr})${durText}`
+        ];
         exercises.forEach((ex) => {
           const activeSets = onlyDone ? ex.sets.filter((s) => s.done) : ex.sets;
           if (!activeSets.length) return;
@@ -3398,6 +3602,8 @@
       }
 
       function renderKeepPreview() {
+        const wkLbl = document.getElementById('week-badge-label');
+        if (wkLbl) wkLbl.textContent = `Sem ${getCurrentWeekNumber()}`;
         const toggleBtn = document.getElementById('export-mode-toggle');
         toggleBtn.textContent = state.exportOnlyDone ? 'Mostrar: Solo ✓' : 'Mostrar: Todos';
         toggleBtn.classList.toggle('active', !!state.exportOnlyDone);
@@ -3406,6 +3612,17 @@
         const text = buildKeepText(state.activeDay, list, getWorkoutElapsedMs(), state.exportOnlyDone);
         document.getElementById('keep-preview').textContent = text;
       }
+
+      document.getElementById('week-minus-btn').addEventListener('click', () => {
+        state.weekOverride = Math.max(1, getCurrentWeekNumber() - 1);
+        saveState();
+        renderKeepPreview();
+      });
+      document.getElementById('week-plus-btn').addEventListener('click', () => {
+        state.weekOverride = getCurrentWeekNumber() + 1;
+        saveState();
+        renderKeepPreview();
+      });
 
       async function copyText(txt, toastMsg) {
         try {
@@ -3487,7 +3704,7 @@
 
         // Reset checks & timers for next session while keeping updated loads/reps
         exercises.forEach((ex) => {
-          ex.sets.forEach((s) => { s.done = false; });
+          ex.sets.forEach((s) => { s.done = false; s.doneL = false; s.doneR = false; });
         });
         state.workoutTimer = { status: 'idle', startedAt: null, accumulatedMs: 0 };
         stopRestTimer();
@@ -3617,7 +3834,7 @@
 
       document.getElementById('clear-checks-btn').addEventListener('click', () => {
         (state.days[state.activeDay] || []).forEach((ex) => {
-          ex.sets.forEach((s) => { s.done = false; });
+          ex.sets.forEach((s) => { s.done = false; s.doneL = false; s.doneR = false; });
         });
         saveState();
         renderActiveView();
@@ -4123,7 +4340,7 @@
         }
 
         if (parsedReps && parsedReps.length) {
-          base.sets = parsedReps.map((r) => ({ reps: r, weight: base.weight, done: false }));
+          base.sets = parsedReps.map((r) => ({ reps: r, weight: base.weight, done: false, doneL: false, doneR: false }));
         } else {
           base.sets.forEach((s) => { s.weight = base.weight; });
         }
@@ -4150,10 +4367,22 @@
 
       function applySheetsPayload(payload) {
         if (!payload || !payload.days) return;
+        const prevNotes = {};
+        ['torso_a', 'pierna_a', 'torso_b', 'pierna_b'].forEach((dk) => {
+          (state.days[dk] || []).forEach((ex) => {
+            if (ex.notes && ex.notes.trim()) prevNotes[`${dk}:${ex.catId}`] = ex.notes;
+          });
+        });
+
         const parsedDays = {};
         ['torso_a', 'pierna_a', 'torso_b', 'pierna_b'].forEach((dk) => {
           const rows = payload.days[dk] || [];
-          parsedDays[dk] = rows.length ? rows.map((r) => parseSheetRowToExercise(r)) : buildDefaultDay(dk);
+          parsedDays[dk] = rows.length ? rows.map((r) => {
+            const item = parseSheetRowToExercise(r);
+            const savedNote = prevNotes[`${dk}:${item.catId}`];
+            if (savedNote) item.notes = savedNote;
+            return item;
+          }) : buildDefaultDay(dk);
         });
         syncCfg.version = payload.version || 'v7.1';
         syncCfg.lastHash = payload.hash || '';
