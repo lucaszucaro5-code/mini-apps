@@ -11,11 +11,15 @@ MiniApps-iPhone/
 ├── sw.js                       # Service Worker global (cachea Hub + todas las mini apps)
 ├── .nojekyll                   # Evita procesamiento Jekyll en GitHub Pages
 ├── icons/                      # Íconos PNG (180/192/512) y SVG del Hub
-└── neat/
-    ├── index.html              # Calculadora NEAT — Sistema Maestro v7.1
-    ├── manifest.json           # Web App Manifest específico de NEAT v7.1
-    ├── neat_calculator_base.html # Respaldo del HTML original base
-    └── icons/                  # Íconos PNG (180/192/512) y SVG de NEAT v7.1
+├── neat/
+│   ├── index.html              # Calculadora NEAT — Sistema Maestro v7.1
+│   ├── manifest.json           # Web App Manifest específico de NEAT v7.1
+│   ├── neat_calculator_base.html # Respaldo del HTML original base
+│   └── icons/                  # Íconos PNG (180/192/512) y SVG de NEAT v7.1
+└── gym/
+    ├── index.html              # Gym Tracker & Keep — Sistema Maestro v7.1
+    ├── manifest.json           # Web App Manifest específico de Gym v7.1
+    └── icons/                  # Íconos PNG (180/192/512) y SVG de Gym v7.1
 ```
 
 ## Cómo agregar una nueva Mini App en el futuro

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'miniapps-sm-v1';
+const CACHE_NAME = 'miniapps-sm-v2';
 
 const PRECACHE_URLS = [
   './',
@@ -14,7 +14,14 @@ const PRECACHE_URLS = [
   './neat/icons/icon.svg',
   './neat/icons/apple-touch-icon.png',
   './neat/icons/icon-192.png',
-  './neat/icons/icon-512.png'
+  './neat/icons/icon-512.png',
+  './gym/',
+  './gym/index.html',
+  './gym/manifest.json',
+  './gym/icons/icon.svg',
+  './gym/icons/apple-touch-icon.png',
+  './gym/icons/icon-192.png',
+  './gym/icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -69,6 +76,9 @@ self.addEventListener('fetch', (event) => {
       if (event.request.mode === 'navigate') {
         if (url.pathname.includes('/neat')) {
           return (await cache.match('./neat/index.html')) || (await cache.match('./index.html'));
+        }
+        if (url.pathname.includes('/gym')) {
+          return (await cache.match('./gym/index.html')) || (await cache.match('./index.html'));
         }
         return cache.match('./index.html');
       }
