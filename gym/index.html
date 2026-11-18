@@ -2224,14 +2224,17 @@
       }
 
       const SYNC_KEY = 'sm_gym_sheets_sync_v1';
-      const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbzaDG4yDBFxbCUidIRaIWxHx3gByZ6u5GXJcTMu_4IYA6j21Je3vCyVRrXXnBxmYlWxTw/exec';
+      const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwrIMA7d8rYlb-4mR13eyxzkXSK2C9IJP2epB5H1GlKvkBiRzp9P6E0NjyuRP6By94DYg/exec';
       function loadSyncCfg() {
         const defaults = { url: DEFAULT_SYNC_URL, version: 'v7.1', lastHash: '', lastSyncIso: '', cachedDays: null };
         try {
           const raw = localStorage.getItem(SYNC_KEY);
           if (!raw) return defaults;
           const parsed = JSON.parse(raw);
-          return { ...defaults, ...parsed, url: parsed.url || DEFAULT_SYNC_URL };
+          const cleanUrl = (!parsed.url || parsed.url.includes('AKfycbzaDG4yDBFxbCUidIRaIWxHx3gByZ6u5GXJcTMu_4IYA6j21Je3vCyVRrXXnBxmYlWxTw'))
+            ? DEFAULT_SYNC_URL
+            : parsed.url;
+          return { ...defaults, ...parsed, url: cleanUrl };
         } catch (_) {
           return defaults;
         }
