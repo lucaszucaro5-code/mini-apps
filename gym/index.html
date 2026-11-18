@@ -2257,19 +2257,28 @@
         updateHistoryCount();
       }
 
+      const DEFAULT_SPOTIFY_CLIENT_ID = '34bf96d6874a4d28a06c59236be5f70f';
+
       function loadSpotifyCfg() {
+        const defaults = {
+          embedUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP',
+          clientId: DEFAULT_SPOTIFY_CLIENT_ID,
+          accessToken: '',
+          refreshToken: '',
+          expiresAt: 0,
+          activeTab: 'api'
+        };
         try {
           const raw = localStorage.getItem(SPOTIFY_KEY);
-          return raw ? JSON.parse(raw) : {
-            embedUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP',
-            clientId: '',
-            accessToken: '',
-            refreshToken: '',
-            expiresAt: 0,
-            activeTab: 'embed'
+          if (!raw) return defaults;
+          const parsed = JSON.parse(raw);
+          return {
+            ...defaults,
+            ...parsed,
+            clientId: parsed.clientId || DEFAULT_SPOTIFY_CLIENT_ID
           };
         } catch (_) {
-          return { embedUrl: '', clientId: '', accessToken: '', refreshToken: '', expiresAt: 0, activeTab: 'embed' };
+          return defaults;
         }
       }
 
