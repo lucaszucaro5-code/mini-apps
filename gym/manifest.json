@@ -2,7 +2,7 @@
   "name": "Gym Tracker — Sistema Maestro v7.1",
   "short_name": "Gym v7.1",
   "description": "Registro de entrenamiento en vivo, variantes, series, cronómetro de descanso, sobrecarga SportClub, Spotify y exportación a Google Keep.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

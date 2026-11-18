@@ -1,4 +1,4 @@
-const CACHE_NAME = 'miniapps-sm-v5';
+const CACHE_NAME = 'miniapps-sm-v6';
 
 const PRECACHE_URLS = [
   './',
@@ -46,11 +46,56 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function getCanonicalHtmlKey(pathname) {
+  if (pathname.includes('/neat')) return './neat/index.html';
+  if (pathname.includes('/gym')) return './gym/index.html';
+  return './index.html';
+}
+
+async function fetchWithTimeout(request, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Permitir bypass limpio cuando se solicita ?reset=1
+  if (url.searchParams.get('reset') === '1') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  const accept = event.request.headers.get('accept') || '';
+  const isHtmlRequest = event.request.mode === 'navigate' || accept.includes('text/html');
+
+  if (isHtmlRequest) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const canonicalKey = getCanonicalHtmlKey(url.pathname);
+        try {
+          const networkResponse = await fetchWithTimeout(event.request, 3000);
+          if (networkResponse && networkResponse.ok && networkResponse.type === 'basic') {
+            cache.put(canonicalKey, networkResponse.clone());
+            return networkResponse;
+          }
+        } catch (_) {}
+
+        const cached = (await cache.match(canonicalKey)) || (await cache.match('./index.html'));
+        if (cached) return cached;
+        return new Response('Sin conexión', { status: 503, statusText: 'Offline' });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
@@ -72,16 +117,6 @@ self.addEventListener('fetch', (event) => {
 
       const networkResponse = await networkPromise;
       if (networkResponse) return networkResponse;
-
-      if (event.request.mode === 'navigate') {
-        if (url.pathname.includes('/neat')) {
-          return (await cache.match('./neat/index.html')) || (await cache.match('./index.html'));
-        }
-        if (url.pathname.includes('/gym')) {
-          return (await cache.match('./gym/index.html')) || (await cache.match('./index.html'));
-        }
-        return cache.match('./index.html');
-      }
 
       return new Response('Sin conexión', { status: 503, statusText: 'Offline' });
     })

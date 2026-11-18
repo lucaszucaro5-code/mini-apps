@@ -2213,9 +2213,7 @@
         };
       }
 
-      let state = loadState();
-      let history = loadHistory();
-      let spotifyCfg = loadSpotifyCfg();
+      const DEFAULT_SPOTIFY_CLIENT_ID = '34bf96d6874a4d28a06c59236be5f70f';
 
       function loadState() {
         try {
@@ -2257,8 +2255,6 @@
         updateHistoryCount();
       }
 
-      const DEFAULT_SPOTIFY_CLIENT_ID = '34bf96d6874a4d28a06c59236be5f70f';
-
       function loadSpotifyCfg() {
         const defaults = {
           embedUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP',
@@ -2287,6 +2283,10 @@
           localStorage.setItem(SPOTIFY_KEY, JSON.stringify(spotifyCfg));
         } catch (_) {}
       }
+
+      let state = loadState();
+      let history = loadHistory();
+      let spotifyCfg = loadSpotifyCfg();
 
       // ============================================================
       // 3. HELPERS (FORMAT, OVERLOAD DELTA, HISTORY GHOST)
@@ -2472,7 +2472,7 @@
             await Promise.all(keys.map((k) => caches.delete(k)));
           }
         } catch (_) {}
-        location.replace(location.pathname + '?updated=' + Date.now());
+        location.replace(location.pathname.replace(/index\.html$/, '') + '?updated=' + Date.now());
       }
 
       document.querySelector('.offline-pill').style.cursor = 'pointer';
@@ -2563,20 +2563,25 @@
         }
       }
 
+      let lastClockText = '';
       function renderWorkoutClock() {
         const clockEl = document.getElementById('workout-clock');
         const toggleBtn = document.getElementById('wt-toggle-btn');
         const wt = state.workoutTimer;
-        clockEl.textContent = formatClock(getWorkoutElapsedMs());
+        const nextText = formatClock(getWorkoutElapsedMs());
+        if (nextText !== lastClockText) {
+          clockEl.textContent = nextText;
+          lastClockText = nextText;
+        }
         if (wt.status === 'running') {
           clockEl.classList.add('running');
-          toggleBtn.textContent = '⏸ Pausar';
+          if (toggleBtn.textContent !== '⏸ Pausar') toggleBtn.textContent = '⏸ Pausar';
         } else if (wt.status === 'paused') {
           clockEl.classList.remove('running');
-          toggleBtn.textContent = '▶ Reanudar';
+          if (toggleBtn.textContent !== '▶ Reanudar') toggleBtn.textContent = '▶ Reanudar';
         } else {
           clockEl.classList.remove('running');
-          toggleBtn.textContent = '▶ Iniciar';
+          if (toggleBtn.textContent !== '▶ Iniciar') toggleBtn.textContent = '▶ Iniciar';
         }
       }
 
@@ -2623,23 +2628,42 @@
         renderRestBar();
       }
 
+      let lastRestTimeText = '';
+      let lastRestLabelText = '';
+      let lastRestPct = '';
       function renderRestBar() {
         const bar = document.getElementById('rest-bar');
         const rt = state.restTimer;
         if (!rt.running || !rt.endAt) {
-          bar.classList.remove('visible', 'done-flash');
+          if (bar.classList.contains('visible')) {
+            bar.classList.remove('visible', 'done-flash');
+          }
+          lastRestTimeText = '';
+          lastRestLabelText = '';
+          lastRestPct = '';
           return;
         }
-        bar.classList.add('visible');
+        if (!bar.classList.contains('visible')) bar.classList.add('visible');
         const remMs = rt.endAt - Date.now();
         const remSec = Math.max(0, Math.ceil(remMs / 1000));
         const mm = String(Math.floor(remSec / 60)).padStart(2, '0');
         const ss = String(remSec % 60).padStart(2, '0');
-        document.getElementById('rest-time-display').textContent = `${mm}:${ss}`;
-        document.getElementById('rest-ex-label').textContent = remSec === 0 ? '¡Tiempo! Próxima serie' : rt.label;
+        const timeStr = `${mm}:${ss}`;
+        const labelStr = remSec === 0 ? '¡Tiempo! Próxima serie' : rt.label;
+        if (timeStr !== lastRestTimeText) {
+          document.getElementById('rest-time-display').textContent = timeStr;
+          lastRestTimeText = timeStr;
+        }
+        if (labelStr !== lastRestLabelText) {
+          document.getElementById('rest-ex-label').textContent = labelStr;
+          lastRestLabelText = labelStr;
+        }
 
-        const pct = Math.max(0, Math.min(100, (remMs / (rt.totalSec * 1000)) * 100));
-        document.getElementById('rest-progress-bar').style.width = `${pct}%`;
+        const pctStr = `${Math.max(0, Math.min(100, Math.round((remMs / (rt.totalSec * 1000)) * 100)))}%`;
+        if (pctStr !== lastRestPct) {
+          document.getElementById('rest-progress-bar').style.width = pctStr;
+          lastRestPct = pctStr;
+        }
 
         if (remMs <= 0) {
           bar.classList.add('done-flash');
@@ -2732,6 +2756,15 @@
         renderKeepPreview();
       }
 
+      function refreshExerciseCard(card, ex, exIdx) {
+        if (!card || !card.isConnected) return;
+        const exercises = state.days[state.activeDay] || [];
+        const newCard = buildExerciseCard(ex, exIdx, exercises.length);
+        card.replaceWith(newCard);
+        updateHudProgress();
+        renderKeepPreview();
+      }
+
       function buildExerciseCard(ex, exIdx, totalEx) {
         const card = document.createElement('article');
         const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
@@ -2776,11 +2809,14 @@
         select.addEventListener('change', () => {
           const newCatId = select.value;
           if (newCatId === '__custom__') return;
-          const fresh = createExerciseInstance({ order: ex.order, catId: newCatId });
-          fresh.uid = ex.uid;
-          state.days[state.activeDay][exIdx] = fresh;
-          saveState();
-          renderActiveView();
+          select.blur();
+          setTimeout(() => {
+            const fresh = createExerciseInstance({ order: ex.order, catId: newCatId });
+            fresh.uid = ex.uid;
+            state.days[state.activeDay][exIdx] = fresh;
+            saveState();
+            refreshExerciseCard(card, fresh, exIdx);
+          }, 60);
         });
 
         const summaryLine = document.createElement('div');
@@ -2874,7 +2910,7 @@
                 }
               }
               saveState();
-              renderActiveView();
+              refreshExerciseCard(card, ex, exIdx);
             });
             vStrip.appendChild(chip);
           });
@@ -2908,7 +2944,7 @@
             ex.rir = ghost.ex.rir;
             ex.sets = ghost.ex.sets.map((s) => ({ reps: s.reps, weight: s.weight, done: false }));
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
             showToast('Marcas anteriores cargadas');
           });
           prevRow.appendChild(applyPrevBtn);
@@ -2930,7 +2966,7 @@
             ex.weightEdited = true;
             ex.sets.forEach((s) => { s.weight = ex.weight; });
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
           deltaRow.appendChild(applyDeltaBtn);
         }
@@ -2954,7 +2990,7 @@
           ex.weightEdited = true;
           ex.sets.forEach((s) => { s.weight = ex.weight; });
           saveState();
-          renderActiveView();
+          refreshExerciseCard(card, ex, exIdx);
         });
 
         const wInput = document.createElement('input');
@@ -2970,7 +3006,7 @@
           ex.weightEdited = true;
           ex.sets.forEach((s) => { s.weight = val; });
           saveState();
-          renderActiveView();
+          setTimeout(() => refreshExerciseCard(card, ex, exIdx), 40);
         });
 
         const wPlus = document.createElement('button');
@@ -2982,7 +3018,7 @@
           ex.weightEdited = true;
           ex.sets.forEach((s) => { s.weight = ex.weight; });
           saveState();
-          renderActiveView();
+          refreshExerciseCard(card, ex, exIdx);
         });
 
         const unitSpan = document.createElement('span');
@@ -3004,7 +3040,7 @@
           mp.addEventListener('click', () => {
             ex.weightMode = m.id;
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
           modePills.appendChild(mp);
         });
@@ -3064,7 +3100,7 @@
         perWeightBtn.addEventListener('click', () => {
           ex.perSetWeight = !ex.perSetWeight;
           saveState();
-          renderActiveView();
+          refreshExerciseCard(card, ex, exIdx);
         });
 
         const minusSetBtn = document.createElement('button');
@@ -3075,7 +3111,7 @@
           if (ex.sets.length > 1) {
             ex.sets.pop();
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           }
         });
 
@@ -3087,7 +3123,7 @@
           const last = ex.sets[ex.sets.length - 1] || { reps: ex.repMin, weight: ex.weight };
           ex.sets.push({ reps: last.reps, weight: last.weight ?? ex.weight, done: false });
           saveState();
-          renderActiveView();
+          refreshExerciseCard(card, ex, exIdx);
         });
 
         setsTools.appendChild(perWeightBtn);
@@ -3121,7 +3157,7 @@
           rMinus.addEventListener('click', () => {
             s.reps = Math.max(0, (Number(s.reps) || 0) - 1);
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
 
           const rInput = document.createElement('input');
@@ -3133,7 +3169,7 @@
           rInput.addEventListener('change', () => {
             s.reps = Math.max(0, parseInt(rInput.value, 10) || 0);
             saveState();
-            renderActiveView();
+            setTimeout(() => refreshExerciseCard(card, ex, exIdx), 40);
           });
 
           const rPlus = document.createElement('button');
@@ -3143,7 +3179,7 @@
           rPlus.addEventListener('click', () => {
             s.reps = (Number(s.reps) || 0) + 1;
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
 
           rWrap.appendChild(rMinus);
@@ -3168,7 +3204,7 @@
             swInput.addEventListener('change', () => {
               s.weight = Math.max(0, parseFloat(swInput.value) || 0);
               saveState();
-              renderActiveView();
+              setTimeout(() => refreshExerciseCard(card, ex, exIdx), 40);
             });
             const kgLbl = document.createElement('span');
             kgLbl.style.fontSize = '11px';
@@ -3191,7 +3227,7 @@
               startRestTimer(ex.restSec || 90, `${ex.name} · S${sIdx + 1}`);
             }
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
 
           row.appendChild(idxSpan);
@@ -3218,7 +3254,7 @@
           rp.addEventListener('click', () => {
             ex.rir = opt;
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
           rirPills.appendChild(rp);
         });
@@ -3248,7 +3284,7 @@
             }
             ex.notes = parts.join(' · ');
             saveState();
-            renderActiveView();
+            refreshExerciseCard(card, ex, exIdx);
           });
           qNotes.appendChild(qBtn);
         });
@@ -3602,9 +3638,31 @@
       // ============================================================
       // 10. SPOTIFY WIDGET (EMBED + WEB API PKCE + NATIVE LINK)
       // ============================================================
+      async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          return await fetch(url, { ...options, signal: controller.signal });
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
       const spDrawer = document.getElementById('sp-drawer');
+      let loadedEmbedUrl = '';
+
+      function maybeLazyLoadEmbed(force) {
+        if (!force && (!spDrawer.classList.contains('open') || spotifyCfg.activeTab !== 'embed')) {
+          return;
+        }
+        renderSpotifyEmbed(force);
+      }
+
       function toggleSpotifyDrawer() {
         spDrawer.classList.toggle('open');
+        if (spDrawer.classList.contains('open')) {
+          maybeLazyLoadEmbed(false);
+        }
       }
       document.getElementById('sp-drawer-toggle').addEventListener('click', toggleSpotifyDrawer);
       document.getElementById('sp-toggle-area').addEventListener('click', toggleSpotifyDrawer);
@@ -3618,6 +3676,9 @@
         document.querySelectorAll('.sp-panel').forEach((p) => {
           p.classList.toggle('active', p.id === `sp-panel-${tabName}`);
         });
+        if (tabName === 'embed' && spDrawer.classList.contains('open')) {
+          maybeLazyLoadEmbed(false);
+        }
       }
 
       document.querySelectorAll('.sp-tab').forEach((t) => {
@@ -3630,17 +3691,23 @@
         return `https://open.spotify.com/embed/${match[2]}/${match[3]}?utm_source=generator&theme=0`;
       }
 
-      function renderSpotifyEmbed() {
+      function renderSpotifyEmbed(force) {
         const container = document.getElementById('sp-embed-container');
         if (!navigator.onLine) {
+          loadedEmbedUrl = '';
           container.innerHTML = '<div style="padding:10px;border-radius:10px;background:var(--surface-dim);">Sin conexión: el reproductor embebido requiere internet, pero podés usar la app nativa de Spotify offline.</div>';
           return;
         }
         const embedSrc = parseSpotifyEmbedSrc(spotifyCfg.embedUrl);
         if (!embedSrc) {
+          loadedEmbedUrl = '';
           container.innerHTML = '<div style="padding:8px;color:var(--error);">Link de Spotify inválido. Pegá un link de playlist, álbum o canción.</div>';
           return;
         }
+        if (!force && loadedEmbedUrl === embedSrc && container.querySelector('iframe')) {
+          return;
+        }
+        loadedEmbedUrl = embedSrc;
         container.innerHTML = `<iframe style="border-radius:12px;border:0;" src="${embedSrc}" width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
       }
 
@@ -3649,7 +3716,7 @@
         const val = document.getElementById('sp-embed-url-input').value.trim();
         spotifyCfg.embedUrl = val;
         saveSpotifyCfg();
-        renderSpotifyEmbed();
+        renderSpotifyEmbed(true);
         showToast('Playlist cargada');
       });
       document.querySelectorAll('[data-sp-preset]').forEach((btn) => {
@@ -3657,7 +3724,7 @@
           spotifyCfg.embedUrl = btn.dataset.spPreset;
           document.getElementById('sp-embed-url-input').value = spotifyCfg.embedUrl;
           saveSpotifyCfg();
-          renderSpotifyEmbed();
+          renderSpotifyEmbed(true);
         });
       });
 
@@ -3721,11 +3788,19 @@
       async function handleSpotifyCallback() {
         const params = new URLSearchParams(location.search);
         const code = params.get('code');
+        const oauthError = params.get('error');
+        if (code || oauthError) {
+          history.replaceState({}, document.title, location.pathname.replace(/index\.html$/, ''));
+        }
+        if (oauthError) {
+          showToast(`Spotify error: ${oauthError}`);
+          return false;
+        }
         const verifier = localStorage.getItem('sp_pkce_verifier');
-        if (!code || !verifier || !spotifyCfg.clientId) return;
+        if (!code || !verifier || !spotifyCfg.clientId) return false;
 
         try {
-          const res = await fetch('https://accounts.spotify.com/api/token', {
+          const res = await fetchWithTimeout('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -3735,7 +3810,7 @@
               redirect_uri: redirectUri,
               code_verifier: verifier
             })
-          });
+          }, 6000);
           const data = await res.json();
           if (data.access_token) {
             spotifyCfg.accessToken = data.access_token;
@@ -3744,10 +3819,16 @@
             spotifyCfg.activeTab = 'api';
             saveSpotifyCfg();
             localStorage.removeItem('sp_pkce_verifier');
-            history.replaceState({}, document.title, location.pathname);
             showToast('🎵 Spotify conectado');
+            return true;
           }
-        } catch (_) {}
+          if (data.error_description || data.error) {
+            showToast(`Spotify: ${data.error_description || data.error}`);
+          }
+        } catch (_) {
+          showToast('Timeout o error al conectar Spotify');
+        }
+        return false;
       }
 
       async function ensureSpotifyToken() {
@@ -3757,7 +3838,7 @@
         }
         if (!spotifyCfg.refreshToken || !spotifyCfg.clientId) return null;
         try {
-          const res = await fetch('https://accounts.spotify.com/api/token', {
+          const res = await fetchWithTimeout('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -3765,7 +3846,7 @@
               grant_type: 'refresh_token',
               refresh_token: spotifyCfg.refreshToken
             })
-          });
+          }, 6000);
           const data = await res.json();
           if (data.access_token) {
             spotifyCfg.accessToken = data.access_token;
@@ -3818,9 +3899,9 @@
           return;
         }
         try {
-          const res = await fetch('https://api.spotify.com/v1/me/player', {
+          const res = await fetchWithTimeout('https://api.spotify.com/v1/me/player', {
             headers: { Authorization: `Bearer ${token}` }
-          });
+          }, 6000);
           if (res.status === 204) {
             updateSpotifyPlaybackUI(null);
             return;
@@ -3840,17 +3921,17 @@
           return;
         }
         try {
-          const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+          const res = await fetchWithTimeout(`https://api.spotify.com/v1/me/player/${endpoint}`, {
             method,
             headers: { Authorization: `Bearer ${token}` }
-          });
+          }, 6000);
           if (res.status === 404) {
             showToast('Abrí Spotify y dale play una vez en el iPhone');
           } else {
             setTimeout(fetchSpotifyState, 450);
           }
         } catch (_) {
-          showToast('Sin conexión con Spotify');
+          showToast('Sin conexión o timeout con Spotify');
         }
       }
 
@@ -3868,19 +3949,22 @@
       }, 12000);
 
       // ============================================================
-      // 11. INIT
+      // 11. INIT (RENDER INMEDIATO SIN BLOQUEOS)
       // ============================================================
-      async function init() {
-        await handleSpotifyCallback();
-        activateSpTab(spotifyCfg.activeTab || 'embed');
-        renderSpotifyEmbed();
-        updateSpotifyPlaybackUI(null);
-        if (spotifyCfg.accessToken) fetchSpotifyState();
-
+      function init() {
         updateHistoryCount();
         renderWorkoutClock();
         renderRestBar();
         renderActiveView();
+        activateSpTab(spotifyCfg.activeTab || 'api');
+        updateSpotifyPlaybackUI(null);
+
+        handleSpotifyCallback().then((connected) => {
+          if (connected || spotifyCfg.accessToken) {
+            activateSpTab('api');
+            fetchSpotifyState();
+          }
+        });
       }
 
       init();
