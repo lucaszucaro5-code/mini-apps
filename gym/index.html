@@ -1228,7 +1228,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <a class="back-link" href="../index.html">‹ Mini Apps</a>
-        <div class="app-heading">Gym Tracker <span>· v7.1</span></div>
+        <div class="app-heading">Gym Tracker <span id="app-version-badge">· v7.1</span></div>
       </div>
       <div class="topbar-right">
         <button class="pill-btn" id="wakelock-btn" type="button" title="Mantener pantalla encendida">🔓 Pantalla</button>
@@ -1355,8 +1355,14 @@
           <p id="day-subtitle">Sistema Maestro v7.1 · Blindaje C1-C3 activo</p>
         </div>
         <div class="day-actions">
-          <button class="hud-btn" id="reset-day-btn" type="button" title="Restaurar rutina base del día">↺ Base v7.1</button>
+          <button class="hud-btn" id="open-sync-btn" type="button" title="Sincronizar con Sistema Maestro (Google Sheets)">🔄 Sync</button>
+          <button class="hud-btn" id="reset-day-btn" type="button" title="Restaurar rutina base del día">↺ Base</button>
         </div>
+      </div>
+
+      <div id="sync-update-banner" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:14px;background:var(--accent-container);border:1px solid var(--primary);align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:700;color:var(--primary);" id="sync-banner-text">🔄 Nueva actualización en Sistema Maestro</div>
+        <button class="hud-btn primary" id="apply-pending-sync-btn" type="button">Aplicar ahora</button>
       </div>
 
       <div class="ex-list" id="ex-list"></div>
@@ -1435,6 +1441,30 @@
       </div>
       <div style="font-size:12px;font-weight:750;color:var(--on-surface-variant);margin-bottom:8px;">Catálogo Sistema Maestro (v7.1 + Extras):</div>
       <div id="catalog-list"></div>
+    </div>
+  </div>
+
+  <!-- Sync Sistema Maestro Modal -->
+  <div class="modal-backdrop" id="sync-modal" role="dialog" aria-modal="true" aria-labelledby="sync-title">
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <h3 id="sync-title">🔄 Sync Automático Sistema Maestro</h3>
+        <button class="hud-btn" id="close-sync-btn" type="button">Cerrar ✕</button>
+      </div>
+      <div style="font-size:12.5px;color:var(--on-surface-variant);line-height:1.45;margin-bottom:10px;">
+        Al abrir la app con internet, inspecciona tu Google Sheets más reciente (<code>Sistema Maestro v...</code>). Si no cambió el contenido, no toca nada; si detecta una nueva versión (ej. <code>v7.2</code>) o una actualización semanal de sobrecarga progresiva, actualiza tus objetivos automáticamente.
+      </div>
+      <div style="padding:10px;border-radius:12px;background:var(--surface-dim);font-size:12px;margin-bottom:10px;" id="sync-status-box">
+        Estado: Sin configurar (usando base local v7.1)
+      </div>
+      <div style="font-size:12px;font-weight:750;margin-bottom:4px;">URL de tu Google Apps Script (<code>/exec</code>):</div>
+      <div class="sp-input-row" style="margin-bottom:10px;">
+        <input class="text-input" id="sync-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+        <button class="hud-btn primary" id="sync-save-btn" type="button">Guardar</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="big-btn primary" id="sync-now-btn" type="button">🔄 Inspeccionar Sheets ahora</button>
+      </div>
     </div>
   </div>
 
@@ -2193,7 +2223,26 @@
         };
       }
 
+      const SYNC_KEY = 'sm_gym_sheets_sync_v1';
+      function loadSyncCfg() {
+        try {
+          const raw = localStorage.getItem(SYNC_KEY);
+          return raw ? JSON.parse(raw) : { url: '', version: 'v7.1', lastHash: '', lastSyncIso: '', cachedDays: null };
+        } catch (_) {
+          return { url: '', version: 'v7.1', lastHash: '', lastSyncIso: '', cachedDays: null };
+        }
+      }
+      function saveSyncCfg() {
+        try {
+          localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg));
+        } catch (_) {}
+      }
+      let syncCfg = loadSyncCfg();
+
       function buildDefaultDay(dayId) {
+        if (syncCfg && syncCfg.cachedDays && Array.isArray(syncCfg.cachedDays[dayId]) && syncCfg.cachedDays[dayId].length) {
+          return syncCfg.cachedDays[dayId].map((item) => JSON.parse(JSON.stringify(item)));
+        }
         const tpl = DAYS_TEMPLATE[dayId];
         return tpl.exercises.map((spec) => createExerciseInstance(spec));
       }
@@ -3949,9 +3998,256 @@
       }, 12000);
 
       // ============================================================
-      // 11. INIT (RENDER INMEDIATO SIN BLOQUEOS)
+      // 11. GOOGLE SHEETS AUTO-SYNC (SISTEMA MAESTRO)
+      // ============================================================
+      let pendingSyncPayload = null;
+
+      function normalizeTxt(s) {
+        return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+
+      function matchCatalogForSheetRow(rowName) {
+        const n = normalizeTxt(rowName);
+        if (n.includes('chin tuck')) return EXERCISE_CATALOG.chin_tuck;
+        if (n.includes('inclinado') && n.includes('multipower')) return EXERCISE_CATALOG.press_inclinado_multi;
+        if (n.includes('inclinado') && n.includes('mancuerna')) return EXERCISE_CATALOG.press_inclinado_manc;
+        if (n.includes('elevaciones laterales en polea') || (n.includes('laterales') && n.includes('polea'))) return EXERCISE_CATALOG.elev_laterales_polea;
+        if (n.includes('remo') && n.includes('esternal')) return EXERCISE_CATALOG.remo_esternal;
+        if (n.includes('pec-deck') || n.includes('pec deck')) return EXERCISE_CATALOG.pec_deck;
+        if (n.includes('cruces en polea')) return EXERCISE_CATALOG.cruces_polea_baja;
+        if (n.includes('jalon al pecho')) return EXERCISE_CATALOG.jalon_pecho;
+        if (n.includes('dominadas')) return EXERCISE_CATALOG.dominadas;
+        if (n.includes('curl') && n.includes('barra w')) return EXERCISE_CATALOG.curl_barra_w;
+        if (n.includes('curl') && n.includes('brazo atras')) return EXERCISE_CATALOG.curl_polea_atras;
+        if (n.includes('martillo')) return EXERCISE_CATALOG.curl_martillo;
+        if (n.includes('triceps') && n.includes('sobre la cabeza')) return EXERCISE_CATALOG.triceps_sobre_cabeza;
+        if (n.includes('triceps')) return EXERCISE_CATALOG.triceps_polea_alta;
+        if (n.includes('deltoides posterior') || n.includes('face pull') || n.includes('pajaros')) return EXERCISE_CATALOG.deltoides_post;
+        if (n.includes('prensa')) return EXERCISE_CATALOG.prensa_45;
+        if (n.includes('step down')) return EXERCISE_CATALOG.step_down;
+        if (n.includes('sillon de cuadriceps')) return EXERCISE_CATALOG.sillon_cuads;
+        if (n.includes('femoral')) return EXERCISE_CATALOG.femoral_sentado;
+        if (n.includes('gemelos parado')) return EXERCISE_CATALOG.gemelos_step;
+        if (n.includes('soleo')) return EXERCISE_CATALOG.soleo_sentado;
+        if (n.includes('hiperextensiones')) return EXERCISE_CATALOG.hiperextensiones;
+        if (n.includes('crunch')) return EXERCISE_CATALOG.crunch_maquina;
+        if (n.includes('deadbug')) return EXERCISE_CATALOG.deadbug;
+        if (n.includes('hip thrust')) return EXERCISE_CATALOG.hip_thrust_cinturon;
+        if (n.includes('laterales de pierna') || n.includes('tobillera')) return EXERCISE_CATALOG.elev_pierna_tobillera;
+        if (n.includes('pallof')) return EXERCISE_CATALOG.pallof_polea;
+        if (n.includes('hexagonal')) return EXERCISE_CATALOG.barra_hexagonal;
+        if (n.includes('silla romana')) return EXERCISE_CATALOG.silla_romana;
+        return null;
+      }
+
+      function parseSheetRowToExercise(row) {
+        const cat = matchCatalogForSheetRow(row.name);
+        const base = cat ? createExerciseInstance({ order: row.order, catId: cat.id }) : {
+          uid: `sheet_${Math.random().toString(36).slice(2, 8)}`,
+          catId: '__sheet__',
+          order: row.order || '•',
+          name: row.name,
+          isPosture: false,
+          variant: 'Estándar',
+          variants: ['Estándar'],
+          weight: 0,
+          weightMode: 'total',
+          weightEdited: false,
+          perSetWeight: false,
+          step: 2.5,
+          equipType: 'libre',
+          repMin: 8,
+          repMax: 12,
+          sets: [{ reps: 10, weight: 0, done: false }],
+          rir: '1-2',
+          restSec: 90,
+          badges: [],
+          cue: '',
+          refS7: '',
+          notes: ''
+        };
+
+        base.order = row.order || base.order;
+        base.name = row.name || base.name;
+        if (row.cue) base.cue = row.cue;
+        if (row.weightObj) base.refS7 = row.weightObj;
+
+        // Parse RIR from setsReps
+        const sr = String(row.setsReps || '');
+        const rirMatch = sr.match(/RIR\s*([0-9]+(?:-[0-9]+)?|Control)/i);
+        if (rirMatch) base.rir = rirMatch[1];
+
+        // Parse per-set reps like (12-12-10) or 3 x 8
+        const parenReps = sr.match(/\((\d+(?:-\d+)+)\)/);
+        const sxrMatch = sr.match(/(\d+)\s*[x×]\s*(\d+)(?:-(\d+))?/i);
+        let parsedReps = null;
+        if (parenReps) {
+          parsedReps = parenReps[1].split('-').map((n) => parseInt(n, 10)).filter((n) => !isNaN(n));
+        } else if (sxrMatch) {
+          const count = Math.max(1, parseInt(sxrMatch[1], 10) || 3);
+          const repVal = parseInt(sxrMatch[2], 10) || 10;
+          parsedReps = Array.from({ length: count }, () => repVal);
+          if (sxrMatch[3]) {
+            base.repMin = repVal;
+            base.repMax = parseInt(sxrMatch[3], 10) || repVal;
+          }
+        }
+
+        // Parse weight & mode from weightObj
+        const wo = String(row.weightObj || '');
+        const woLow = normalizeTxt(wo);
+        if (woLow.includes('peso corporal')) {
+          base.weightMode = 'bodyweight';
+          base.weight = 0;
+        } else if (woLow.includes('tobillera')) {
+          base.weightMode = 'ankle';
+          const tm = wo.match(/#(\d+)/);
+          if (tm) base.weight = parseInt(tm[1], 10);
+        } else {
+          if (woLow.includes('c/u') || woLow.includes('por lado') || woLow.includes('/lado')) {
+            base.weightMode = woLow.includes('en discos') ? 'total' : 'per_side';
+          } else {
+            base.weightMode = 'total';
+          }
+          const wm = wo.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+          if (wm) {
+            base.weight = parseFloat(wm[1].replace(',', '.'));
+          }
+        }
+
+        if (parsedReps && parsedReps.length) {
+          base.sets = parsedReps.map((r) => ({ reps: r, weight: base.weight, done: false }));
+        } else {
+          base.sets.forEach((s) => { s.weight = base.weight; });
+        }
+
+        return base;
+      }
+
+      function updateSyncStatusUI() {
+        const badge = document.getElementById('app-version-badge');
+        const box = document.getElementById('sync-status-box');
+        const urlIn = document.getElementById('sync-url-input');
+        const ver = syncCfg.version || 'v7.1';
+        if (badge) badge.textContent = `· ${ver}`;
+        if (urlIn && !urlIn.value && syncCfg.url) urlIn.value = syncCfg.url;
+        if (box) {
+          if (!syncCfg.url) {
+            box.textContent = `Estado: Sin configurar · Usando base local (${ver})`;
+          } else {
+            const when = syncCfg.lastSyncIso ? new Date(syncCfg.lastSyncIso).toLocaleString('es-AR') : 'Nunca';
+            box.innerHTML = `<strong>Versión activa:</strong> ${ver}<br><strong>Última inspección:</strong> ${when}<br><strong>Firma:</strong> <code>${(syncCfg.lastHash || '—').slice(0, 10)}</code>`;
+          }
+        }
+      }
+
+      function applySheetsPayload(payload) {
+        if (!payload || !payload.days) return;
+        const parsedDays = {};
+        ['torso_a', 'pierna_a', 'torso_b', 'pierna_b'].forEach((dk) => {
+          const rows = payload.days[dk] || [];
+          parsedDays[dk] = rows.length ? rows.map((r) => parseSheetRowToExercise(r)) : buildDefaultDay(dk);
+        });
+        syncCfg.version = payload.version || 'v7.1';
+        syncCfg.lastHash = payload.hash || '';
+        syncCfg.lastSyncIso = new Date().toISOString();
+        syncCfg.cachedDays = parsedDays;
+        saveSyncCfg();
+
+        state.days = {
+          torso_a: buildDefaultDay('torso_a'),
+          pierna_a: buildDefaultDay('pierna_a'),
+          torso_b: buildDefaultDay('torso_b'),
+          pierna_b: buildDefaultDay('pierna_b')
+        };
+        saveState();
+        pendingSyncPayload = null;
+        document.getElementById('sync-update-banner').style.display = 'none';
+        updateSyncStatusUI();
+        renderActiveView();
+        showToast(`🔄 Sistema Maestro actualizado (${syncCfg.version})`);
+      }
+
+      async function checkSheetsSync(manual) {
+        if (!syncCfg.url) {
+          if (manual) showToast('Pegá primero la URL del Apps Script');
+          return;
+        }
+        if (!navigator.onLine) {
+          if (manual) showToast('Sin conexión para revisar Sheets');
+          return;
+        }
+        try {
+          const sep = syncCfg.url.includes('?') ? '&' : '?';
+          const chkRes = await fetchWithTimeout(`${syncCfg.url}${sep}action=check`, {}, 5000);
+          const chk = await chkRes.json();
+          if (!chk || !chk.ok) {
+            if (manual) showToast('Error al consultar Google Sheets');
+            return;
+          }
+          syncCfg.lastSyncIso = new Date().toISOString();
+          if (chk.hash && chk.hash === syncCfg.lastHash) {
+            saveSyncCfg();
+            updateSyncStatusUI();
+            if (manual) showToast(`✅ Al día (${chk.version || syncCfg.version})`);
+            return;
+          }
+          // Hubo cambio de versión o sobrecarga semanal -> bajar rutina completa
+          const fullRes = await fetchWithTimeout(`${syncCfg.url}${sep}action=full`, {}, 7000);
+          const full = await fullRes.json();
+          if (!full || !full.ok || !full.days) {
+            if (manual) showToast('No se pudo leer la rutina del Sheets');
+            return;
+          }
+          const anyInProgress = Object.values(state.days || {}).some((list) =>
+            (list || []).some((ex) => (ex.sets || []).some((s) => s.done))
+          );
+          if (anyInProgress && !manual) {
+            pendingSyncPayload = full;
+            const b = document.getElementById('sync-update-banner');
+            document.getElementById('sync-banner-text').textContent = `🔄 Hay cambios en Sistema Maestro (${full.version}) — Tus checks ✓ actuales están protegidos`;
+            b.style.display = 'flex';
+          } else {
+            applySheetsPayload(full);
+          }
+        } catch (_) {
+          if (manual) showToast('Timeout o error de red con Google Sheets');
+        }
+      }
+
+      const syncModal = document.getElementById('sync-modal');
+      document.getElementById('open-sync-btn').addEventListener('click', () => {
+        updateSyncStatusUI();
+        syncModal.classList.add('open');
+      });
+      document.getElementById('close-sync-btn').addEventListener('click', () => {
+        syncModal.classList.remove('open');
+      });
+      document.getElementById('sync-save-btn').addEventListener('click', () => {
+        const val = document.getElementById('sync-url-input').value.trim();
+        syncCfg.url = val;
+        saveSyncCfg();
+        updateSyncStatusUI();
+        if (val) checkSheetsSync(true);
+        else showToast('URL limpiada');
+      });
+      document.getElementById('sync-now-btn').addEventListener('click', () => {
+        const val = document.getElementById('sync-url-input').value.trim();
+        if (val !== syncCfg.url) {
+          syncCfg.url = val;
+          saveSyncCfg();
+        }
+        checkSheetsSync(true);
+      });
+      document.getElementById('apply-pending-sync-btn').addEventListener('click', () => {
+        if (pendingSyncPayload) applySheetsPayload(pendingSyncPayload);
+      });
+
+      // ============================================================
+      // 12. INIT (RENDER INMEDIATO SIN BLOQUEOS)
       // ============================================================
       function init() {
+        updateSyncStatusUI();
         updateHistoryCount();
         renderWorkoutClock();
         renderRestBar();
@@ -3965,6 +4261,10 @@
             fetchSpotifyState();
           }
         });
+
+        if (syncCfg.url && navigator.onLine) {
+          checkSheetsSync(false);
+        }
       }
 
       init();
