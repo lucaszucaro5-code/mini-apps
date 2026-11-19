@@ -1,4 +1,4 @@
-const CACHE_NAME = 'miniapps-sm-v10';
+const CACHE_NAME = 'miniapps-sm-v11';
 
 const PRECACHE_URLS = [
   './',

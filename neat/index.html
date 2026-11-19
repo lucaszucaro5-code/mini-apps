@@ -277,8 +277,8 @@
     .control-deck {
       display: flex;
       flex-direction: column;
-      gap: 11px;
-      padding: 14px;
+      gap: 9px;
+      padding: 12px 14px;
       background: var(--surface-bright);
       border: 1px solid var(--border);
       border-radius: var(--r-m);
@@ -438,7 +438,7 @@
       <div class="legend-row">
         <span><span class="legend-dot" style="background: var(--chart-1);"></span>Calle 5 km/h (<span id="leg-street">92 kcal</span>)</span>
         <span><span class="legend-dot" style="background: var(--chart-3);"></span>Cinta inclinada (<span id="leg-incline">248 kcal</span>)</span>
-        <span><span class="legend-dot" style="background: var(--chart-8);"></span>Bici 20 km/h (<span id="leg-bike">0 kcal</span>)</span>
+        <span><span class="legend-dot" style="background: var(--chart-8);"></span>Bici MTB <span id="leg-bike-speed">20</span> km/h (<span id="leg-bike">0 kcal</span>)</span>
       </div>
     </div>
 
@@ -503,14 +503,29 @@
 
       <div class="lumi-slider-row">
         <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-bike">Bici 20 km/h</label>
+          <label class="lumi-slider-label" for="in-bike">Bici MTB</label>
         </div>
         <div class="lumi-slider-container">
-          <input id="in-bike" class="lumi-slider" type="range" min="0" max="60" step="5" value="0">
+          <input id="in-bike" class="lumi-slider" type="range" min="0" max="90" step="5" value="0">
           <div class="stepper-group">
             <button type="button" class="step-btn" data-target="in-bike" data-dir="-1" aria-label="Reducir bici">−</button>
             <div id="val-bike" class="lumi-slider-value">0 min</div>
             <button type="button" class="step-btn" data-target="in-bike" data-dir="1" aria-label="Aumentar bici">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lumi-slider-row">
+        <div class="lumi-slider-header">
+          <label class="lumi-slider-label" for="in-bike-speed">Velocidad prom. MTB</label>
+          <span class="lumi-slider-hint" id="hint-bike-rate">~94 W · 7,6 kcal/min</span>
+        </div>
+        <div class="lumi-slider-container">
+          <input id="in-bike-speed" class="lumi-slider" type="range" min="12" max="30" step="0.5" value="20">
+          <div class="stepper-group">
+            <button type="button" class="step-btn" data-target="in-bike-speed" data-dir="-1" aria-label="Reducir velocidad bici">−</button>
+            <div id="val-bike-speed" class="lumi-slider-value">20 km/h</div>
+            <button type="button" class="step-btn" data-target="in-bike-speed" data-dir="1" aria-label="Aumentar velocidad bici">+</button>
           </div>
         </div>
       </div>
@@ -520,15 +535,18 @@
   <script>
     const STORAGE_KEY = 'sm_neat_v7_1_state';
     const DEFAULT_WEIGHT = 72.7;
+    const DEFAULT_BIKE_SPEED = 20;
 
     const fmtInt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
     const fmtDec = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const fmtSpeed = (v) => (Number.isInteger(v) ? fmtInt.format(v) : fmtDec.format(v));
 
     const weightEl = document.getElementById('in-weight');
     const streetEl = document.getElementById('in-street');
     const inclineMinEl = document.getElementById('in-incline-min');
     const gradeEl = document.getElementById('in-grade');
     const bikeEl = document.getElementById('in-bike');
+    const bikeSpeedEl = document.getElementById('in-bike-speed');
     const presetBtns = document.querySelectorAll('.lumi-segmented-btn');
     const stepBtns = document.querySelectorAll('.step-btn');
 
@@ -536,8 +554,19 @@
       gym: { street: 20, inclineMin: 35, grade: 6, bike: 0 },
       rest: { street: 30, inclineMin: 40, grade: 6, bike: 0 },
       incline: { street: 0, inclineMin: 55, grade: 6, bike: 0 },
-      bike: { street: 0, inclineMin: 0, grade: 6, bike: 45 }
+      bike: { street: 0, inclineMin: 0, grade: 6, bike: 45, bikeSpeed: 20 }
     };
+
+    function calcMtbBikeRate(weight, speedKmh) {
+      // MTB en terreno mixto (ciudad, campo y ruta): Crr=0.008, CdA=0.50 m², bici+equipo=13 kg, transmisión 96% + ecuación ACSM
+      const v = speedKmh / 3.6;
+      const totalMass = weight + 13.0;
+      const pRoll = 0.008 * totalMass * 9.81 * v;
+      const pAero = 0.5 * 1.225 * 0.50 * (v * v * v);
+      const watts = (pRoll + pAero) / 0.96;
+      const kcalPerMin = (7.0 * weight + 10.8 * watts) / 200.0;
+      return { watts, kcalPerMin };
+    }
 
     function clampToInput(el, value, fallback) {
       const n = Number(value);
@@ -550,13 +579,14 @@
       return step < 1 ? Math.round(snapped * 10) / 10 : Math.round(snapped);
     }
 
-    function detectActivePreset(streetMin, inclineMin, grade, bikeMin) {
+    function detectActivePreset(streetMin, inclineMin, grade, bikeMin, bikeSpeed) {
       for (const [key, p] of Object.entries(PRESETS)) {
         if (
           p.street === streetMin &&
           p.inclineMin === inclineMin &&
           p.grade === grade &&
-          p.bike === bikeMin
+          p.bike === bikeMin &&
+          (p.bikeSpeed === undefined || p.bikeSpeed === bikeSpeed)
         ) {
           return key;
         }
@@ -577,6 +607,7 @@
         inclineMin: parseFloat(inclineMinEl.value),
         grade: parseFloat(gradeEl.value),
         bike: parseFloat(bikeEl.value),
+        bikeSpeed: parseFloat(bikeSpeedEl.value),
         preset: activePreset
       };
       try {
@@ -597,6 +628,7 @@
 
       if (saved && typeof saved === 'object') {
         weightEl.value = clampToInput(weightEl, saved.weight, DEFAULT_WEIGHT);
+        bikeSpeedEl.value = clampToInput(bikeSpeedEl, saved.bikeSpeed, DEFAULT_BIKE_SPEED);
 
         if (saved.preset && PRESETS[saved.preset]) {
           const p = PRESETS[saved.preset];
@@ -604,6 +636,7 @@
           inclineMinEl.value = p.inclineMin;
           gradeEl.value = p.grade;
           bikeEl.value = p.bike;
+          if (p.bikeSpeed !== undefined) bikeSpeedEl.value = p.bikeSpeed;
         } else {
           streetEl.value = clampToInput(streetEl, saved.street, PRESETS.gym.street);
           inclineMinEl.value = clampToInput(inclineMinEl, saved.inclineMin, PRESETS.gym.inclineMin);
@@ -616,6 +649,7 @@
         inclineMinEl.value = PRESETS.gym.inclineMin;
         gradeEl.value = PRESETS.gym.grade;
         bikeEl.value = PRESETS.gym.bike;
+        bikeSpeedEl.value = DEFAULT_BIKE_SPEED;
       }
     }
 
@@ -625,6 +659,7 @@
       const inclineMin = parseFloat(inclineMinEl.value);
       const grade = parseFloat(gradeEl.value);
       const bikeMin = parseFloat(bikeEl.value);
+      const bikeSpeed = parseFloat(bikeSpeedEl.value);
 
       const scale = weight / 72.5;
       const restKcalPerMin = (3.5 * weight) / 200;
@@ -632,7 +667,8 @@
       const streetKcal = streetMin * (4.59 * scale);
       const inclineRate = (4.59 + 0.415 * grade) * scale;
       const inclineKcal = inclineMin * inclineRate;
-      const bikeKcal = bikeMin * (9.65 * scale);
+      const bikeMetrics = calcMtbBikeRate(weight, bikeSpeed);
+      const bikeKcal = bikeMin * bikeMetrics.kcalPerMin;
 
       const totalKcal = streetKcal + inclineKcal + bikeKcal;
       const totalMin = streetMin + inclineMin + bikeMin;
@@ -640,13 +676,16 @@
 
       const target10kKcal = 418 * scale;
       const eqSteps = Math.round((totalKcal / target10kKcal) * 10000);
-      const totalKm = ((streetMin + inclineMin) * 5 + bikeMin * 20) / 60;
+      const totalKm = ((streetMin + inclineMin) * 5 + bikeMin * bikeSpeed) / 60;
 
       document.getElementById('val-weight').textContent = `${fmtDec.format(weight)} kg`;
       document.getElementById('val-street').textContent = `${streetMin} min`;
       document.getElementById('val-incline-min').textContent = `${inclineMin} min`;
       document.getElementById('val-grade').textContent = `${grade}%`;
       document.getElementById('val-bike').textContent = `${bikeMin} min`;
+      document.getElementById('val-bike-speed').textContent = `${fmtSpeed(bikeSpeed)} km/h`;
+      document.getElementById('leg-bike-speed').textContent = fmtSpeed(bikeSpeed);
+      document.getElementById('hint-bike-rate').textContent = `~${fmtInt.format(Math.round(bikeMetrics.watts))} W · ${fmtDec.format(bikeMetrics.kcalPerMin)} kcal/min`;
 
       document.getElementById('out-steps').textContent = fmtInt.format(eqSteps);
       document.getElementById('out-kcal').textContent = `${fmtInt.format(totalKcal)} kcal`;
@@ -691,7 +730,7 @@
         [segS, segI, segB].forEach((s) => { s.style.width = '0%'; s.textContent = ''; });
       }
 
-      const activePreset = detectActivePreset(streetMin, inclineMin, grade, bikeMin);
+      const activePreset = detectActivePreset(streetMin, inclineMin, grade, bikeMin, bikeSpeed);
       syncPresetButtons(activePreset);
       if (persist) saveState(activePreset);
     }
@@ -703,11 +742,12 @@
         inclineMinEl.value = p.inclineMin;
         gradeEl.value = p.grade;
         bikeEl.value = p.bike;
+        if (p.bikeSpeed !== undefined) bikeSpeedEl.value = p.bikeSpeed;
         updateCalc(true);
       });
     });
 
-    [weightEl, streetEl, inclineMinEl, gradeEl, bikeEl].forEach((el) => {
+    [weightEl, streetEl, inclineMinEl, gradeEl, bikeEl, bikeSpeedEl].forEach((el) => {
       el.addEventListener('input', () => updateCalc(true));
     });
 
