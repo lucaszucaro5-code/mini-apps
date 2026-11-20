@@ -1,4 +1,4 @@
-const CACHE_NAME = 'miniapps-sm-v11';
+const CACHE_NAME = 'miniapps-sm-v12';
 
 const PRECACHE_URLS = [
   './',
@@ -10,6 +10,8 @@ const PRECACHE_URLS = [
   './icons/icon-512.png',
   './neat/',
   './neat/index.html',
+  './neat/styles.css',
+  './neat/app.js',
   './neat/manifest.json',
   './neat/icons/icon.svg',
   './neat/icons/apple-touch-icon.png',

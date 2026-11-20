@@ -5,394 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="NEAT v7.1">
+  <meta name="apple-mobile-web-app-title" content="NEAT v7.2">
   <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <title>Calculadora NEAT — Sistema Maestro v7.1</title>
-  <style>
-    :root {
-      --bg: #f4f5f7;
-      --surface-bright: #ffffff;
-      --surface-dim: #eceef2;
-      --on-surface: #111827;
-      --on-surface-variant: #6b7280;
-      --primary: #2563eb;
-      --accent-container: #dbeafe;
-      --positive: #047857;
-      --positive-container: #d1fae5;
-      --error: #dc2626;
-      --error-container: #fee2e2;
-      --chart-1: #2575fc;
-      --chart-3: #228a49;
-      --chart-8: #d97706;
-      --border: rgba(17, 24, 39, 0.07);
-      --r-s: 10px;
-      --r-m: 14px;
-      --r-full: 999px;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f1115;
-        --surface-bright: #1a1d24;
-        --surface-dim: #252932;
-        --on-surface: #f3f4f6;
-        --on-surface-variant: #9ca3af;
-        --primary: #60a5fa;
-        --accent-container: #1e3a8a;
-        --positive: #34d399;
-        --positive-container: #064e3b;
-        --error: #f87171;
-        --error-container: #7f1d1d;
-        --border: rgba(255, 255, 255, 0.08);
-      }
-    }
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-    html, body {
-      touch-action: manipulation;
-      margin: 0;
-      min-height: 100%;
-      background: var(--bg);
-      color: var(--on-surface);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
-    }
-    body {
-      padding:
-        max(12px, env(safe-area-inset-top))
-        max(14px, env(safe-area-inset-right))
-        max(20px, env(safe-area-inset-bottom))
-        max(14px, env(safe-area-inset-left));
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    .widget-container {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 10px;
-      border-radius: var(--r-full);
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      color: var(--on-surface-variant);
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .back-link:active {
-      opacity: 0.75;
-    }
-    .app-heading {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--on-surface);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .app-heading span {
-      color: var(--on-surface-variant);
-      font-weight: 500;
-    }
-    .offline-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 9px;
-      border-radius: var(--r-full);
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      color: var(--on-surface-variant);
-      font-size: 11px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .offline-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--positive);
-    }
-
-    .preset-bar {
-      margin-bottom: 10px;
-    }
-    .lumi-segmented-group {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      width: 100%;
-      background: var(--surface-dim);
-      padding: 4px;
-      border-radius: var(--r-m);
-    }
-    @media (max-width: 480px) {
-      .lumi-segmented-group {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    .lumi-segmented-btn {
-      border: none;
-      background: transparent;
-      color: var(--on-surface-variant);
-      min-height: 40px;
-      padding: 8px 10px;
-      border-radius: var(--r-s);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      touch-action: manipulation;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-    .lumi-segmented-btn.is-active {
-      background: var(--surface-bright);
-      color: var(--on-surface);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-    }
-
-    .kpi-strip {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .lumi-summary-card {
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      border-radius: var(--r-m);
-      padding: 12px 14px;
-    }
-    .lumi-summary-card.kpi-hero {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 16px;
-    }
-    .kpi-hero-left {
-      min-width: 0;
-    }
-    .lumi-label-s {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--on-surface-variant);
-    }
-    .kpi-val {
-      font-size: 22px;
-      line-height: 28px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--on-surface);
-      margin-top: 2px;
-    }
-    .kpi-hero .kpi-val {
-      font-size: 28px;
-      line-height: 32px;
-    }
-    .kpi-sub {
-      font-size: 12px;
-      line-height: 16px;
-      color: var(--on-surface-variant);
-      margin-top: 2px;
-      font-variant-numeric: tabular-nums;
-    }
-    .status-pill {
-      display: inline-block;
-      padding: 5px 11px;
-      border-radius: var(--r-full);
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .split-stage {
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      border-radius: var(--r-m);
-      padding: 12px 14px;
-      margin-bottom: 10px;
-    }
-    .split-bar {
-      display: flex;
-      height: 24px;
-      border-radius: 8px;
-      overflow: hidden;
-      gap: 2px;
-      margin-bottom: 8px;
-      background: var(--surface-dim);
-    }
-    .split-seg {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      transition: width 0.15s ease;
-      overflow: hidden;
-      white-space: nowrap;
-      color: #fff;
-    }
-    .legend-row {
-      display: flex;
-      gap: 8px 14px;
-      font-size: 12px;
-      color: var(--on-surface-variant);
-      flex-wrap: wrap;
-    }
-    .legend-dot {
-      display: inline-block;
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      margin-right: 5px;
-      vertical-align: middle;
-    }
-
-    .control-deck {
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      padding: 12px 14px;
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      border-radius: var(--r-m);
-    }
-    .lumi-slider-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .lumi-slider-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .lumi-slider-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--on-surface);
-    }
-    .lumi-slider-hint {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--on-surface-variant);
-    }
-    .lumi-slider-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .lumi-slider {
-      flex: 1;
-      -webkit-appearance: none;
-      appearance: none;
-      background: transparent;
-      height: 36px;
-      margin: 0;
-      cursor: pointer;
-      touch-action: pan-y;
-    }
-    .lumi-slider::-webkit-slider-runnable-track {
-      height: 8px;
-      border-radius: var(--r-full);
-      background: var(--surface-dim);
-    }
-    .lumi-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--primary);
-      border: 3px solid var(--surface-bright);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-      margin-top: -10px;
-    }
-    .lumi-slider::-moz-range-track {
-      height: 8px;
-      border-radius: var(--r-full);
-      background: var(--surface-dim);
-    }
-    .lumi-slider::-moz-range-thumb {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: var(--primary);
-      border: 3px solid var(--surface-bright);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-    }
-    .stepper-group {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      flex-shrink: 0;
-    }
-    .step-btn {
-      width: 32px;
-      height: 34px;
-      border: none;
-      border-radius: 8px;
-      background: var(--surface-dim);
-      color: var(--on-surface);
-      font-size: 17px;
-      font-weight: 600;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    .step-btn:active {
-      opacity: 0.7;
-      transform: scale(0.95);
-    }
-    .lumi-slider-value {
-      min-width: 68px;
-      text-align: center;
-      background: var(--surface-dim);
-      color: var(--on-surface);
-      padding: 8px 8px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-  </style>
+  <title>Calculadora NEAT — Sistema Maestro v7.2</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div class="widget-container">
     <header class="topbar">
       <div class="topbar-left">
         <a class="back-link" href="../index.html" aria-label="Volver al menú de mini apps">← Apps</a>
-        <div class="app-heading">NEAT <span>· Sistema Maestro v7.1</span></div>
+        <div class="app-heading">NEAT <span>· Sistema Maestro v7.2</span></div>
       </div>
       <div class="offline-pill" id="offline-pill">
         <span class="offline-dot" id="offline-dot"></span>
@@ -400,402 +27,301 @@
       </div>
     </header>
 
-    <div class="preset-bar">
-      <div class="lumi-segmented-group" role="group" aria-label="Combinaciones rápidas">
-        <button type="button" class="lumi-segmented-btn is-active" data-preset="gym">Día Gym (8k)</button>
-        <button type="button" class="lumi-segmented-btn" data-preset="rest">Descanso (10k)</button>
-        <button type="button" class="lumi-segmented-btn" data-preset="incline">Solo Cinta 6%</button>
-        <button type="button" class="lumi-segmented-btn" data-preset="bike">Solo Bici 20 km/h</button>
-      </div>
-    </div>
+    <nav class="main-tabs" role="tablist" aria-label="Secciones NEAT">
+      <button type="button" class="main-tab-btn is-active" data-tab="today" role="tab" aria-selected="true">
+        Calculadora &amp; Hoy
+      </button>
+      <button type="button" class="main-tab-btn" data-tab="logs" role="tab" aria-selected="false">
+        Registros Diarios
+        <span class="tab-badge" id="logs-count-badge">0</span>
+      </button>
+    </nav>
 
-    <div class="kpi-strip">
-      <div class="lumi-summary-card kpi-hero">
-        <div class="kpi-hero-left">
-          <div class="lumi-label-s">Pasos Equivalentes</div>
-          <div class="kpi-val" id="out-steps">8.124</div>
+    <!-- ==================== TAB 1: CALCULADORA & HOY ==================== -->
+    <section id="panel-today" class="tab-panel is-active">
+      <div id="unsaved-past-banner" class="draft-banner" style="display:none;">
+        <span id="unsaved-past-text">Tenés actividades sin guardar de otro día.</span>
+        <div class="draft-banner-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-save-past-draft">Guardar ese día</button>
+          <button type="button" class="btn btn-sm" id="btn-discard-past-draft">Descartar</button>
         </div>
-        <div id="out-badge" class="status-pill">Piso 8k alcanzado</div>
       </div>
-      <div class="lumi-summary-card">
-        <div class="lumi-label-s">Gasto Bruto / Neto</div>
-        <div class="kpi-val" id="out-kcal">341 kcal</div>
-        <div class="kpi-sub" id="out-net">Neto extra: 271 kcal</div>
-      </div>
-      <div class="lumi-summary-card">
-        <div class="lumi-label-s">Tiempo / Distancia</div>
-        <div class="kpi-val" id="out-time">55 min</div>
-        <div class="kpi-sub" id="out-dist">Recorrido: 4,6 km</div>
-      </div>
-    </div>
 
-    <div class="split-stage">
-      <div class="split-bar" role="img" aria-label="Aporte calórico por modalidad">
-        <div id="seg-street" class="split-seg" style="background: var(--chart-1); width: 27%;">27%</div>
-        <div id="seg-incline" class="split-seg" style="background: var(--chart-3); width: 73%;">73%</div>
-        <div id="seg-bike" class="split-seg" style="background: var(--chart-8); width: 0%;"></div>
-      </div>
-      <div class="legend-row">
-        <span><span class="legend-dot" style="background: var(--chart-1);"></span>Calle 5 km/h (<span id="leg-street">92 kcal</span>)</span>
-        <span><span class="legend-dot" style="background: var(--chart-3);"></span>Cinta inclinada (<span id="leg-incline">248 kcal</span>)</span>
-        <span><span class="legend-dot" style="background: var(--chart-8);"></span>Bici MTB <span id="leg-bike-speed">20</span> km/h (<span id="leg-bike">0 kcal</span>)</span>
-      </div>
-    </div>
-
-    <div class="control-deck">
-      <div class="lumi-slider-row">
-        <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-weight">Peso corporal</label>
-          <span class="lumi-slider-hint">Base: 72,5 kg</span>
+      <article class="card" id="today-card">
+        <div class="card-head">
+          <div class="card-title-group">
+            <h2 class="card-title">Acumulado del Día</h2>
+            <span id="today-saved-badge" class="status-pill" style="display:none;">Guardado ✓</span>
+          </div>
+          <input id="today-date" class="date-input" type="date" aria-label="Fecha del registro diario">
         </div>
-        <div class="lumi-slider-container">
-          <input id="in-weight" class="lumi-slider" type="range" min="65.0" max="85.0" step="0.1" value="72.7">
-          <div class="stepper-group">
-            <button type="button" class="step-btn" data-target="in-weight" data-dir="-1" aria-label="Reducir peso">−</button>
-            <div id="val-weight" class="lumi-slider-value">72,7 kg</div>
-            <button type="button" class="step-btn" data-target="in-weight" data-dir="1" aria-label="Aumentar peso">+</button>
+
+        <div class="today-hero">
+          <div class="kpi-hero-left">
+            <div class="lumi-label-s">Pasos acumulados</div>
+            <div class="today-steps-val" id="today-steps">0</div>
+          </div>
+          <div id="today-goal-badge" class="status-pill">Faltan 8.000 para 8k</div>
+        </div>
+
+        <div class="goal-progress-wrap" aria-label="Progreso hacia 10.000 pasos">
+          <div id="today-progress-fill" class="goal-progress-fill"></div>
+          <div class="goal-marker-8k" title="Piso 8.000 pasos"></div>
+        </div>
+
+        <div class="today-metrics-row">
+          <span id="today-kcal">0 kcal brutas · 0 netas</span>
+          <span id="today-time-dist">0 min · 0,0 km</span>
+        </div>
+
+        <div id="today-activities-list" class="activities-list"></div>
+
+        <div class="close-day-box">
+          <div class="close-day-title">Cierre del Día (se guarda en Registros Diarios)</div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="close-weight">Peso hoy (kg)</label>
+              <input id="close-weight" class="text-input" type="number" step="0.1" min="40" max="150" inputmode="decimal" placeholder="Ej. 72,7">
+            </div>
+            <div class="form-field">
+              <label for="close-waist">Cintura hoy (cm)</label>
+              <input id="close-waist" class="text-input" type="number" step="0.1" min="50" max="150" inputmode="decimal" placeholder="Ej. 88,0">
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="close-note">Nota del día (opcional)</label>
+            <input id="close-note" class="text-input" type="text" placeholder="Ej. Caminata en cinta + salida corta en bici">
+          </div>
+          <div class="actions-row">
+            <button type="button" class="btn btn-positive btn-grow" id="btn-save-day">
+              Guardar día en Registros Diarios
+            </button>
+            <button type="button" class="btn btn-sm" id="btn-clear-today" style="display:none;">
+              Limpiar
+            </button>
           </div>
         </div>
-      </div>
+      </article>
 
-      <div class="lumi-slider-row">
-        <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-street">Calle 5 km/h</label>
-        </div>
-        <div class="lumi-slider-container">
-          <input id="in-street" class="lumi-slider" type="range" min="0" max="100" step="5" value="20">
-          <div class="stepper-group">
-            <button type="button" class="step-btn" data-target="in-street" data-dir="-1" aria-label="Reducir caminata en calle">−</button>
-            <div id="val-street" class="lumi-slider-value">20 min</div>
-            <button type="button" class="step-btn" data-target="in-street" data-dir="1" aria-label="Aumentar caminata en calle">+</button>
-          </div>
+      <div class="section-caption">Calculadora y Carga por Actividad</div>
+
+      <div class="preset-bar">
+        <div class="lumi-segmented-group" role="group" aria-label="Combinaciones rápidas">
+          <button type="button" class="lumi-segmented-btn is-active" data-preset="gym">Día Gym (8k)</button>
+          <button type="button" class="lumi-segmented-btn" data-preset="rest">Descanso (10k)</button>
+          <button type="button" class="lumi-segmented-btn" data-preset="incline">Solo Cinta 6%</button>
+          <button type="button" class="lumi-segmented-btn" data-preset="bike">Solo Bici 20 km/h</button>
         </div>
       </div>
 
-      <div class="lumi-slider-row">
-        <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-incline-min">Cinta 5 km/h</label>
-        </div>
-        <div class="lumi-slider-container">
-          <input id="in-incline-min" class="lumi-slider" type="range" min="0" max="80" step="5" value="35">
-          <div class="stepper-group">
-            <button type="button" class="step-btn" data-target="in-incline-min" data-dir="-1" aria-label="Reducir cinta">−</button>
-            <div id="val-incline-min" class="lumi-slider-value">35 min</div>
-            <button type="button" class="step-btn" data-target="in-incline-min" data-dir="1" aria-label="Aumentar cinta">+</button>
+      <div class="kpi-strip">
+        <div class="lumi-summary-card kpi-hero">
+          <div class="kpi-hero-left">
+            <div class="lumi-label-s">Pasos Equivalentes (Simulador)</div>
+            <div class="kpi-val" id="out-steps">8.124</div>
           </div>
+          <div id="out-badge" class="status-pill">Piso 8k alcanzado</div>
+        </div>
+        <div class="lumi-summary-card">
+          <div class="lumi-label-s">Gasto Bruto / Neto</div>
+          <div class="kpi-val" id="out-kcal">341 kcal</div>
+          <div class="kpi-sub" id="out-net">Neto extra: 271 kcal</div>
+        </div>
+        <div class="lumi-summary-card">
+          <div class="lumi-label-s">Tiempo / Distancia</div>
+          <div class="kpi-val" id="out-time">55 min</div>
+          <div class="kpi-sub" id="out-dist">Recorrido: 4,6 km</div>
         </div>
       </div>
 
-      <div class="lumi-slider-row">
-        <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-grade">Inclinación cinta</label>
-          <span class="lumi-slider-hint">Óptimo: 6%–7%</span>
+      <div class="split-stage">
+        <div class="split-bar" role="img" aria-label="Aporte calórico por modalidad">
+          <div id="seg-street" class="split-seg" style="background: var(--chart-1); width: 27%;">27%</div>
+          <div id="seg-incline" class="split-seg" style="background: var(--chart-3); width: 73%;">73%</div>
+          <div id="seg-bike" class="split-seg" style="background: var(--chart-8); width: 0%;"></div>
         </div>
-        <div class="lumi-slider-container">
-          <input id="in-grade" class="lumi-slider" type="range" min="2" max="9" step="1" value="6">
-          <div class="stepper-group">
-            <button type="button" class="step-btn" data-target="in-grade" data-dir="-1" aria-label="Reducir inclinación">−</button>
-            <div id="val-grade" class="lumi-slider-value">6%</div>
-            <button type="button" class="step-btn" data-target="in-grade" data-dir="1" aria-label="Aumentar inclinación">+</button>
-          </div>
+        <div class="legend-row">
+          <span><span class="legend-dot" style="background: var(--chart-1);"></span>Calle 5 km/h (<span id="leg-street">92 kcal</span>)</span>
+          <span><span class="legend-dot" style="background: var(--chart-3);"></span>Cinta inclinada (<span id="leg-incline">248 kcal</span>)</span>
+          <span><span class="legend-dot" style="background: var(--chart-8);"></span>Bici MTB <span id="leg-bike-speed">20</span> km/h (<span id="leg-bike">0 kcal</span>)</span>
         </div>
       </div>
 
-      <div class="lumi-slider-row">
-        <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-bike">Bici MTB</label>
-        </div>
-        <div class="lumi-slider-container">
-          <input id="in-bike" class="lumi-slider" type="range" min="0" max="90" step="5" value="0">
-          <div class="stepper-group">
-            <button type="button" class="step-btn" data-target="in-bike" data-dir="-1" aria-label="Reducir bici">−</button>
-            <div id="val-bike" class="lumi-slider-value">0 min</div>
-            <button type="button" class="step-btn" data-target="in-bike" data-dir="1" aria-label="Aumentar bici">+</button>
+      <div class="control-deck">
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-weight">Peso corporal</label>
+            <span class="lumi-slider-hint">Base: 72,5 kg</span>
           </div>
+          <div class="lumi-slider-container">
+            <input id="in-weight" class="lumi-slider" type="range" min="65.0" max="85.0" step="0.1" value="72.7">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-weight" data-dir="-1" aria-label="Reducir peso">−</button>
+              <div id="val-weight" class="lumi-slider-value">72,7 kg</div>
+              <button type="button" class="step-btn" data-target="in-weight" data-dir="1" aria-label="Aumentar peso">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-street">Calle 5 km/h</label>
+            <button type="button" class="add-act-btn" id="btn-add-street">+ Sumar a hoy</button>
+          </div>
+          <div class="lumi-slider-container">
+            <input id="in-street" class="lumi-slider" type="range" min="0" max="100" step="5" value="20">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-street" data-dir="-1" aria-label="Reducir caminata en calle">−</button>
+              <div id="val-street" class="lumi-slider-value">20 min</div>
+              <button type="button" class="step-btn" data-target="in-street" data-dir="1" aria-label="Aumentar caminata en calle">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-incline-min">Cinta 5 km/h</label>
+            <button type="button" class="add-act-btn" id="btn-add-incline">+ Sumar a hoy</button>
+          </div>
+          <div class="lumi-slider-container">
+            <input id="in-incline-min" class="lumi-slider" type="range" min="0" max="80" step="5" value="35">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-incline-min" data-dir="-1" aria-label="Reducir cinta">−</button>
+              <div id="val-incline-min" class="lumi-slider-value">35 min</div>
+              <button type="button" class="step-btn" data-target="in-incline-min" data-dir="1" aria-label="Aumentar cinta">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-grade">Inclinación cinta</label>
+            <span class="lumi-slider-hint">Óptimo: 6%–7%</span>
+          </div>
+          <div class="lumi-slider-container">
+            <input id="in-grade" class="lumi-slider" type="range" min="2" max="9" step="1" value="6">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-grade" data-dir="-1" aria-label="Reducir inclinación">−</button>
+              <div id="val-grade" class="lumi-slider-value">6%</div>
+              <button type="button" class="step-btn" data-target="in-grade" data-dir="1" aria-label="Aumentar inclinación">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-bike">Bici MTB</label>
+            <button type="button" class="add-act-btn" id="btn-add-bike">+ Sumar a hoy</button>
+          </div>
+          <div class="lumi-slider-container">
+            <input id="in-bike" class="lumi-slider" type="range" min="0" max="90" step="5" value="0">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-bike" data-dir="-1" aria-label="Reducir bici">−</button>
+              <div id="val-bike" class="lumi-slider-value">0 min</div>
+              <button type="button" class="step-btn" data-target="in-bike" data-dir="1" aria-label="Aumentar bici">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-bike-speed">Velocidad prom. MTB</label>
+            <span class="lumi-slider-hint" id="hint-bike-rate">~94 W · 7,6 kcal/min</span>
+          </div>
+          <div class="lumi-slider-container">
+            <input id="in-bike-speed" class="lumi-slider" type="range" min="12" max="30" step="0.5" value="20">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-bike-speed" data-dir="-1" aria-label="Reducir velocidad bici">−</button>
+              <div id="val-bike-speed" class="lumi-slider-value">20 km/h</div>
+              <button type="button" class="step-btn" data-target="in-bike-speed" data-dir="1" aria-label="Aumentar velocidad bici">+</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="btn-add-all">
+          + Agregar todo lo calculado a hoy
+        </button>
+
+        <div class="extra-steps-row">
+          <div class="form-field">
+            <label for="in-extra-steps">Pasos extra / reloj (carga directa)</label>
+            <input id="in-extra-steps" class="text-input" type="number" step="100" min="1" max="50000" inputmode="numeric" placeholder="Ej. 1500">
+          </div>
+          <button type="button" class="btn" id="btn-add-extra-steps">+ Sumar pasos</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: REGISTROS DIARIOS ==================== -->
+    <section id="panel-logs" class="tab-panel">
+      <div class="kpi-strip-3">
+        <div class="lumi-summary-card">
+          <div class="lumi-label-s">Promedio 7 días</div>
+          <div class="kpi-val" id="stat-avg-steps">--</div>
+          <div class="kpi-sub" id="stat-days-8k">0 días &ge; 8k</div>
+        </div>
+        <div class="lumi-summary-card">
+          <div class="lumi-label-s">Último Peso</div>
+          <div class="kpi-val" id="stat-last-weight">--</div>
+          <div class="kpi-sub" id="stat-weight-delta">Sin registros</div>
+        </div>
+        <div class="lumi-summary-card">
+          <div class="lumi-label-s">Última Cintura</div>
+          <div class="kpi-val" id="stat-last-waist">--</div>
+          <div class="kpi-sub" id="stat-waist-delta">Sin registros</div>
         </div>
       </div>
 
-      <div class="lumi-slider-row">
-        <div class="lumi-slider-header">
-          <label class="lumi-slider-label" for="in-bike-speed">Velocidad prom. MTB</label>
-          <span class="lumi-slider-hint" id="hint-bike-rate">~94 W · 7,6 kcal/min</span>
+      <article class="card">
+        <div class="card-head">
+          <h2 class="card-title">Registrar / Editar Peso y Cintura</h2>
+          <input id="meas-date" class="date-input" type="date" aria-label="Fecha de medición">
         </div>
-        <div class="lumi-slider-container">
-          <input id="in-bike-speed" class="lumi-slider" type="range" min="12" max="30" step="0.5" value="20">
-          <div class="stepper-group">
-            <button type="button" class="step-btn" data-target="in-bike-speed" data-dir="-1" aria-label="Reducir velocidad bici">−</button>
-            <div id="val-bike-speed" class="lumi-slider-value">20 km/h</div>
-            <button type="button" class="step-btn" data-target="in-bike-speed" data-dir="1" aria-label="Aumentar velocidad bici">+</button>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="meas-weight">Peso corporal (kg)</label>
+            <input id="meas-weight" class="text-input" type="number" step="0.1" min="40" max="150" inputmode="decimal" placeholder="Ej. 72,7">
+          </div>
+          <div class="form-field">
+            <label for="meas-waist">Cintura (cm)</label>
+            <input id="meas-waist" class="text-input" type="number" step="0.1" min="50" max="150" inputmode="decimal" placeholder="Ej. 88,0">
           </div>
         </div>
-      </div>
-    </div>
+        <div class="form-field">
+          <label for="meas-note">Nota (opcional)</label>
+          <input id="meas-note" class="text-input" type="text" placeholder="Ej. Pesaje en ayunas post-descanso">
+        </div>
+        <div class="actions-row">
+          <button type="button" class="btn btn-primary btn-grow" id="btn-save-measures">Guardar medidas</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2 class="card-title">Historial de Registros Diarios</h2>
+          <span class="lumi-label-s" id="logs-total-label">0 días</span>
+        </div>
+        <div id="logs-list" class="logs-list"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2 class="card-title">Respaldo y Exportación</h2>
+          <span class="lumi-label-s">Guardado offline en este iPhone</span>
+        </div>
+        <div class="export-bar">
+          <button type="button" class="btn btn-sm" id="btn-copy-summary">Copiar resumen</button>
+          <button type="button" class="btn btn-sm" id="btn-export-csv">Exportar CSV</button>
+          <button type="button" class="btn btn-sm" id="btn-export-json">Exportar JSON</button>
+          <button type="button" class="btn btn-sm" id="btn-import-json">Importar JSON</button>
+          <input id="in-import-json" type="file" accept="application/json,.json" style="display:none;">
+        </div>
+      </article>
+    </section>
   </div>
 
-  <script>
-    const STORAGE_KEY = 'sm_neat_v7_1_state';
-    const DEFAULT_WEIGHT = 72.7;
-    const DEFAULT_BIKE_SPEED = 20;
+  <div id="neat-toast" class="neat-toast" role="status" aria-live="polite"></div>
 
-    const fmtInt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
-    const fmtDec = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-    const fmtSpeed = (v) => (Number.isInteger(v) ? fmtInt.format(v) : fmtDec.format(v));
-
-    const weightEl = document.getElementById('in-weight');
-    const streetEl = document.getElementById('in-street');
-    const inclineMinEl = document.getElementById('in-incline-min');
-    const gradeEl = document.getElementById('in-grade');
-    const bikeEl = document.getElementById('in-bike');
-    const bikeSpeedEl = document.getElementById('in-bike-speed');
-    const presetBtns = document.querySelectorAll('.lumi-segmented-btn');
-    const stepBtns = document.querySelectorAll('.step-btn');
-
-    const PRESETS = {
-      gym: { street: 20, inclineMin: 35, grade: 6, bike: 0 },
-      rest: { street: 30, inclineMin: 40, grade: 6, bike: 0 },
-      incline: { street: 0, inclineMin: 55, grade: 6, bike: 0 },
-      bike: { street: 0, inclineMin: 0, grade: 6, bike: 45, bikeSpeed: 20 }
-    };
-
-    function calcMtbBikeRate(weight, speedKmh) {
-      // MTB en terreno mixto (ciudad, campo y ruta): Crr=0.008, CdA=0.50 m², bici+equipo=13 kg, transmisión 96% + ecuación ACSM
-      const v = speedKmh / 3.6;
-      const totalMass = weight + 13.0;
-      const pRoll = 0.008 * totalMass * 9.81 * v;
-      const pAero = 0.5 * 1.225 * 0.50 * (v * v * v);
-      const watts = (pRoll + pAero) / 0.96;
-      const kcalPerMin = (7.0 * weight + 10.8 * watts) / 200.0;
-      return { watts, kcalPerMin };
-    }
-
-    function clampToInput(el, value, fallback) {
-      const n = Number(value);
-      if (!Number.isFinite(n)) return fallback;
-      const min = parseFloat(el.min);
-      const max = parseFloat(el.max);
-      const step = parseFloat(el.step);
-      const clamped = Math.min(max, Math.max(min, n));
-      const snapped = min + Math.round((clamped - min) / step) * step;
-      return step < 1 ? Math.round(snapped * 10) / 10 : Math.round(snapped);
-    }
-
-    function detectActivePreset(streetMin, inclineMin, grade, bikeMin, bikeSpeed) {
-      for (const [key, p] of Object.entries(PRESETS)) {
-        if (
-          p.street === streetMin &&
-          p.inclineMin === inclineMin &&
-          p.grade === grade &&
-          p.bike === bikeMin &&
-          (p.bikeSpeed === undefined || p.bikeSpeed === bikeSpeed)
-        ) {
-          return key;
-        }
-      }
-      return null;
-    }
-
-    function syncPresetButtons(activeKey) {
-      presetBtns.forEach((btn) => {
-        btn.classList.toggle('is-active', btn.dataset.preset === activeKey);
-      });
-    }
-
-    function saveState(activePreset) {
-      const state = {
-        weight: parseFloat(weightEl.value),
-        street: parseFloat(streetEl.value),
-        inclineMin: parseFloat(inclineMinEl.value),
-        grade: parseFloat(gradeEl.value),
-        bike: parseFloat(bikeEl.value),
-        bikeSpeed: parseFloat(bikeSpeedEl.value),
-        preset: activePreset
-      };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (err) {
-        // Ignorar si localStorage está bloqueado
-      }
-    }
-
-    function loadState() {
-      let saved = null;
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) saved = JSON.parse(raw);
-      } catch (err) {
-        saved = null;
-      }
-
-      if (saved && typeof saved === 'object') {
-        weightEl.value = clampToInput(weightEl, saved.weight, DEFAULT_WEIGHT);
-        bikeSpeedEl.value = clampToInput(bikeSpeedEl, saved.bikeSpeed, DEFAULT_BIKE_SPEED);
-
-        if (saved.preset && PRESETS[saved.preset]) {
-          const p = PRESETS[saved.preset];
-          streetEl.value = p.street;
-          inclineMinEl.value = p.inclineMin;
-          gradeEl.value = p.grade;
-          bikeEl.value = p.bike;
-          if (p.bikeSpeed !== undefined) bikeSpeedEl.value = p.bikeSpeed;
-        } else {
-          streetEl.value = clampToInput(streetEl, saved.street, PRESETS.gym.street);
-          inclineMinEl.value = clampToInput(inclineMinEl, saved.inclineMin, PRESETS.gym.inclineMin);
-          gradeEl.value = clampToInput(gradeEl, saved.grade, PRESETS.gym.grade);
-          bikeEl.value = clampToInput(bikeEl, saved.bike, PRESETS.gym.bike);
-        }
-      } else {
-        weightEl.value = DEFAULT_WEIGHT;
-        streetEl.value = PRESETS.gym.street;
-        inclineMinEl.value = PRESETS.gym.inclineMin;
-        gradeEl.value = PRESETS.gym.grade;
-        bikeEl.value = PRESETS.gym.bike;
-        bikeSpeedEl.value = DEFAULT_BIKE_SPEED;
-      }
-    }
-
-    function updateCalc(persist = true) {
-      const weight = parseFloat(weightEl.value);
-      const streetMin = parseFloat(streetEl.value);
-      const inclineMin = parseFloat(inclineMinEl.value);
-      const grade = parseFloat(gradeEl.value);
-      const bikeMin = parseFloat(bikeEl.value);
-      const bikeSpeed = parseFloat(bikeSpeedEl.value);
-
-      const scale = weight / 72.5;
-      const restKcalPerMin = (3.5 * weight) / 200;
-
-      const streetKcal = streetMin * (4.59 * scale);
-      const inclineRate = (4.59 + 0.415 * grade) * scale;
-      const inclineKcal = inclineMin * inclineRate;
-      const bikeMetrics = calcMtbBikeRate(weight, bikeSpeed);
-      const bikeKcal = bikeMin * bikeMetrics.kcalPerMin;
-
-      const totalKcal = streetKcal + inclineKcal + bikeKcal;
-      const totalMin = streetMin + inclineMin + bikeMin;
-      const netKcal = Math.max(0, totalKcal - (totalMin * restKcalPerMin));
-
-      const target10kKcal = 418 * scale;
-      const eqSteps = Math.round((totalKcal / target10kKcal) * 10000);
-      const totalKm = ((streetMin + inclineMin) * 5 + bikeMin * bikeSpeed) / 60;
-
-      document.getElementById('val-weight').textContent = `${fmtDec.format(weight)} kg`;
-      document.getElementById('val-street').textContent = `${streetMin} min`;
-      document.getElementById('val-incline-min').textContent = `${inclineMin} min`;
-      document.getElementById('val-grade').textContent = `${grade}%`;
-      document.getElementById('val-bike').textContent = `${bikeMin} min`;
-      document.getElementById('val-bike-speed').textContent = `${fmtSpeed(bikeSpeed)} km/h`;
-      document.getElementById('leg-bike-speed').textContent = fmtSpeed(bikeSpeed);
-      document.getElementById('hint-bike-rate').textContent = `~${fmtInt.format(Math.round(bikeMetrics.watts))} W · ${fmtDec.format(bikeMetrics.kcalPerMin)} kcal/min`;
-
-      document.getElementById('out-steps').textContent = fmtInt.format(eqSteps);
-      document.getElementById('out-kcal').textContent = `${fmtInt.format(totalKcal)} kcal`;
-      document.getElementById('out-net').textContent = `Neto extra: ${fmtInt.format(netKcal)} kcal`;
-      document.getElementById('out-time').textContent = `${totalMin} min`;
-      document.getElementById('out-dist').textContent = `Recorrido: ${fmtDec.format(totalKm)} km`;
-
-      const badge = document.getElementById('out-badge');
-      if (eqSteps >= 10000) {
-        badge.textContent = 'Meta 10k alcanzada';
-        badge.style.background = 'var(--positive-container)';
-        badge.style.color = 'var(--positive)';
-      } else if (eqSteps >= 8000) {
-        badge.textContent = 'Piso 8k alcanzado';
-        badge.style.background = 'var(--accent-container)';
-        badge.style.color = 'var(--primary)';
-      } else {
-        badge.textContent = `Faltan ${fmtInt.format(8000 - eqSteps)} para 8k`;
-        badge.style.background = 'var(--error-container)';
-        badge.style.color = 'var(--error)';
-      }
-
-      document.getElementById('leg-street').textContent = `${fmtInt.format(streetKcal)} kcal`;
-      document.getElementById('leg-incline').textContent = `${fmtInt.format(inclineKcal)} kcal`;
-      document.getElementById('leg-bike').textContent = `${fmtInt.format(bikeKcal)} kcal`;
-
-      const segS = document.getElementById('seg-street');
-      const segI = document.getElementById('seg-incline');
-      const segB = document.getElementById('seg-bike');
-
-      if (totalKcal > 0) {
-        const pS = Math.round((streetKcal / totalKcal) * 100);
-        const pI = Math.round((inclineKcal / totalKcal) * 100);
-        const pB = Math.max(0, 100 - pS - pI);
-        segS.style.width = `${pS}%`;
-        segS.textContent = pS >= 10 ? `${pS}%` : '';
-        segI.style.width = `${pI}%`;
-        segI.textContent = pI >= 10 ? `${pI}%` : '';
-        segB.style.width = `${pB}%`;
-        segB.textContent = pB >= 10 ? `${pB}%` : '';
-      } else {
-        [segS, segI, segB].forEach((s) => { s.style.width = '0%'; s.textContent = ''; });
-      }
-
-      const activePreset = detectActivePreset(streetMin, inclineMin, grade, bikeMin, bikeSpeed);
-      syncPresetButtons(activePreset);
-      if (persist) saveState(activePreset);
-    }
-
-    presetBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const p = PRESETS[btn.dataset.preset];
-        streetEl.value = p.street;
-        inclineMinEl.value = p.inclineMin;
-        gradeEl.value = p.grade;
-        bikeEl.value = p.bike;
-        if (p.bikeSpeed !== undefined) bikeSpeedEl.value = p.bikeSpeed;
-        updateCalc(true);
-      });
-    });
-
-    [weightEl, streetEl, inclineMinEl, gradeEl, bikeEl, bikeSpeedEl].forEach((el) => {
-      el.addEventListener('input', () => updateCalc(true));
-    });
-
-    stepBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const input = document.getElementById(btn.dataset.target);
-        const dir = Number(btn.dataset.dir);
-        const step = parseFloat(input.step);
-        const current = parseFloat(input.value);
-        input.value = clampToInput(input, current + dir * step, current);
-        updateCalc(true);
-      });
-    });
-
-    const offlineText = document.getElementById('offline-text');
-    const offlineDot = document.getElementById('offline-dot');
-    let swReadyState = false;
-
-    function updateOfflineIndicator() {
-      if (!navigator.onLine) {
-        offlineText.textContent = 'Offline';
-        offlineDot.style.background = '#d97706';
-      } else if (swReadyState) {
-        offlineText.textContent = 'Offline listo';
-        offlineDot.style.background = 'var(--positive)';
-      } else {
-        offlineText.textContent = 'En línea';
-        offlineDot.style.background = 'var(--positive)';
-      }
-    }
-
-    window.addEventListener('online', updateOfflineIndicator);
-    window.addEventListener('offline', updateOfflineIndicator);
-
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('../sw.js', { scope: '../' })
-        .then(() => navigator.serviceWorker.ready)
-        .then(() => {
-          swReadyState = true;
-          updateOfflineIndicator();
-        })
-        .catch(() => updateOfflineIndicator());
-    } else {
-      updateOfflineIndicator();
-    }
-
-    loadState();
-    updateCalc(false);
-  </script>
+  <script src="./app.js"></script>
 </body>
 </html>
