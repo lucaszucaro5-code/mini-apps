@@ -230,6 +230,7 @@
 
   // ==================== PERSISTENCIA LOCAL ====================
   function saveSliderState(activePreset) {
+    const nowIso = new Date().toISOString();
     const state = {
       weight: parseFloat(weightEl.value),
       street: parseFloat(streetEl.value),
@@ -238,11 +239,16 @@
       grade: parseFloat(gradeEl.value),
       bike: parseFloat(bikeEl.value),
       bikeSpeed: parseFloat(bikeSpeedEl.value),
-      preset: activePreset
+      preset: activePreset,
+      updatedAt: nowIso
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const ts = JSON.parse(localStorage.getItem('forma_meta_timestamps_v1') || '{}');
+      ts.neatSliders = nowIso;
+      localStorage.setItem('forma_meta_timestamps_v1', JSON.stringify(ts));
     } catch (_) {}
+    notifyParentOrStandalone(false);
   }
 
   function loadSliderState() {
@@ -294,35 +300,113 @@
     }
   }
 
-  function saveLogs() {
-    try {
-      localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
-    } catch (_) {}
+  let standaloneSyncTimer = null;
+
+  function notifyParentOrStandalone(isLogOrDraftChange = true, dateIso = null) {
     try {
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'forma-logs-updated' }, location.origin);
+        window.parent.postMessage({ type: 'forma-logs-updated', date: dateIso || null }, location.origin);
+        return;
+      }
+    } catch (_) {}
+    if (isLogOrDraftChange) {
+      try { localStorage.setItem('forma_cloud_dirty_v1', '1'); } catch (_) {}
+    }
+    if (standaloneSyncTimer) clearTimeout(standaloneSyncTimer);
+    standaloneSyncTimer = setTimeout(() => standaloneCloudSync(true), 1400);
+  }
+
+  async function standaloneCloudSync(isPush = false) {
+    if (window.parent && window.parent !== window) return;
+    if (!navigator.onLine) return;
+    let url = '';
+    let token = '';
+    try {
+      url = localStorage.getItem('forma_sync_url_v1') || 'https://script.google.com/macros/s/AKfycbwrIMA7d8rYlb-4mR13eyxzkXSK2C9IJP2epB5H1GlKvkBiRzp9P6E0NjyuRP6By94DYg/exec';
+      token = (localStorage.getItem('forma_sync_token_v1') || '').trim();
+    } catch (_) {}
+    if (!url || !token) return;
+    try {
+      if (isPush) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'cloud_sync',
+            token,
+            changedDates: [activeDate],
+            state: {
+              logs,
+              neatDraft: draft,
+              neatSliders: JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'),
+              deletedLogDates: JSON.parse(localStorage.getItem('forma_deleted_logs_v1') || '{}')
+            }
+          })
+        });
+        const d = await res.json().catch(() => null);
+        if (d && d.ok && d.state) applyCloudSyncState(d.state);
+      } else {
+        const sep = url.includes('?') ? '&' : '?';
+        const res = await fetch(`${url}${sep}action=cloud_pull&token=${encodeURIComponent(token)}`);
+        const d = await res.json().catch(() => null);
+        if (d && d.ok && d.state) applyCloudSyncState(d.state);
       }
     } catch (_) {}
   }
 
-  function saveDraft() {
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    } catch (_) {}
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'forma-logs-updated' }, location.origin);
+  function applyCloudSyncState(st) {
+    if (!st || typeof st !== 'object') return;
+    if (st.logs && typeof st.logs === 'object') {
+      logs = { ...logs, ...st.logs };
+      try { localStorage.setItem(LOGS_KEY, JSON.stringify(logs)); } catch (_) {}
+    }
+    if (st.neatDraft && st.neatDraft.date === activeDate) {
+      const remTs = Date.parse(st.neatDraft.updatedAt || '') || 0;
+      const locTs = Date.parse(draft.updatedAt || '') || 0;
+      if (remTs > locTs) {
+        draft = st.neatDraft;
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
       }
-    } catch (_) {}
-  }
-
-  window.addEventListener('message', (e) => {
-    if (e.origin !== location.origin || !e.data || e.data.type !== 'forma-logs-updated') return;
-    loadLogs();
+    }
     syncCloseDayInputsFromDate(activeDate);
     syncMeasureInputsFromDate(measDateEl.value);
     renderToday();
     renderLogs();
+  }
+
+  function saveLogs(dateIso = null) {
+    try {
+      localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+    } catch (_) {}
+    notifyParentOrStandalone(true, dateIso);
+  }
+
+  function saveDraft() {
+    draft.updatedAt = new Date().toISOString();
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (_) {}
+    notifyParentOrStandalone(true, null);
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === 'forma-logs-updated' || e.data.type === 'forma-cloud-synced') {
+      loadSliderState();
+      loadLogs();
+      try {
+        const rawDraft = localStorage.getItem(DRAFT_KEY);
+        const parsedDraft = rawDraft ? JSON.parse(rawDraft) : null;
+        if (parsedDraft && parsedDraft.date === activeDate && Array.isArray(parsedDraft.items)) {
+          draft = parsedDraft;
+        }
+      } catch (_) {}
+      updateCalc(false);
+      syncCloseDayInputsFromDate(activeDate);
+      syncMeasureInputsFromDate(measDateEl.value);
+      renderToday();
+      renderLogs();
+    }
   });
 
   function loadInitialDayState() {
@@ -643,10 +727,11 @@
       totalKm: Math.round(totals.km * 10) / 10,
       weightKg: resolvedWeight,
       waistCm: resolvedWaist,
+      bodyFatPct: Number.isFinite(prev.bodyFatPct) ? prev.bodyFatPct : null,
       note: resolvedNote,
       updatedAt: new Date().toISOString()
     };
-    saveLogs();
+    saveLogs(dateIso);
 
     if (Number.isFinite(resolvedWeight)) {
       weightEl.value = clampToInput(weightEl, resolvedWeight, parseFloat(weightEl.value));
@@ -852,6 +937,11 @@
         const d = btn.dataset.delLog;
         if (!window.confirm(`¿Eliminar el registro del ${formatDateDisplay(d)}?`)) return;
         delete logs[d];
+        try {
+          const delMap = JSON.parse(localStorage.getItem('forma_deleted_logs_v1') || '{}');
+          delMap[d] = new Date().toISOString();
+          localStorage.setItem('forma_deleted_logs_v1', JSON.stringify(delMap));
+        } catch (_) {}
         saveLogs();
         if (d === activeDate) {
           syncCloseDayInputsFromDate(d);
@@ -1181,4 +1271,7 @@
   updateCalc(false);
   renderToday();
   renderLogs();
+  if (window.parent === window) {
+    setTimeout(() => standaloneCloudSync(false), 350);
+  }
 })();

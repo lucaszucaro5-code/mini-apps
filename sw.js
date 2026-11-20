@@ -1,4 +1,4 @@
-const CACHE_NAME = 'forma-luxx-v14';
+const CACHE_NAME = 'forma-luxx-v15';
 
 const PRECACHE_URLS = [
   './',

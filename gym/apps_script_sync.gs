@@ -1,24 +1,56 @@
 /**
- * Google Apps Script — Puente Híbrido en vivo para Forma by Luxx (Gym + Pesajes/Medidas)
+ * Google Apps Script — Puente Híbrido Multi-Dispositivo para Forma by Luxx
+ * (PC <-> iPhone sync vía Google Drive + Sheets, con Clave Privada)
  *
  * Cómo actualizarlo / instalarlo (1 sola vez, ~2 minutos):
- * 1. Entrá a https://script.google.com con tu cuenta de Google.
- * 2. Abrí tu proyecto de sync existente (o creá uno nuevo) y pegá todo este archivo.
- * 3. Arriba a la derecha: "Implementar" -> "Administrar implementaciones" -> editar / nueva versión
- *    (o "Nueva implementación" si es la primera vez).
- *    - Tipo: "Aplicación web"
- *    - Ejecutar como: "Yo" (tu cuenta)
- *    - Quién tiene acceso: "Cualquier usuario"
- * 4. Autorizá permisos de Drive/Sheets si te lo pide.
- * 5. Listo: mantiene compatibilidad total con Gym Tracker y habilita sync bidireccional con Home/Registros.
+ * 1. Entrá a https://script.google.com con tu cuenta de Google y abrí tu proyecto de sync.
+ * 2. Reemplazá todo el código con este archivo.
+ * 3. Cambiá SYNC_SECRET abajo por una clave privada tuya (ej: 'luxx-2026-clave').
+ * 4. Arriba a la derecha: "Implementar" -> "Administrar implementaciones" ->
+ *    Editar (lápiz) -> Versión: "Nueva versión" -> "Implementar".
+ *    (Si es la primera vez: "Implementar" -> "Nueva implementación" -> Aplicación web ->
+ *     Ejecutar como: "Yo" -> Acceso: "Cualquier usuario").
+ * 5. En tu PC y en tu iPhone, abrí Forma by Luxx -> píldora superior derecha ->
+ *    pegá esa misma Clave Privada -> "Sincronizar ahora".
  */
+
+const SYNC_SECRET = 'CAMBIAR_POR_TU_CLAVE';
+const CLOUD_STATE_FILENAME = 'forma_luxx_cloud_state.json';
+
+function getConfiguredSecret_() {
+  try {
+    const prop = PropertiesService.getScriptProperties().getProperty('FORMA_SYNC_KEY');
+    if (prop && String(prop).trim()) return String(prop).trim();
+  } catch (_) {}
+  return String(SYNC_SECRET || '').trim();
+}
+
+function verifySyncToken_(token) {
+  const configured = getConfiguredSecret_();
+  if (!configured || configured === 'CAMBIAR_POR_TU_CLAVE') {
+    return { ok: false, error: 'AUTH_NOT_CONFIGURED' };
+  }
+  if (!token || String(token).trim() !== configured) {
+    return { ok: false, error: 'AUTH_INVALID' };
+  }
+  return { ok: true };
+}
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'full';
+  const token = e && e.parameter ? e.parameter.token : '';
   try {
     if (action === 'pesajes') {
+      const auth = verifySyncToken_(token);
+      if (!auth.ok) return jsonOut_(auth);
       return jsonOut_(readPesajesFromSistemaMaestro_());
     }
+    if (action === 'cloud_pull') {
+      const auth = verifySyncToken_(token);
+      if (!auth.ok) return jsonOut_(auth);
+      return jsonOut_(handleCloudPull_());
+    }
+
     const data = readLatestSistemaMaestro_();
     if (action === 'check') {
       return jsonOut_({
@@ -31,6 +63,8 @@ function doGet(e) {
       });
     }
     if (action === 'bootstrap') {
+      const auth = verifySyncToken_(token);
+      if (!auth.ok) return jsonOut_(auth);
       const pesajesData = readPesajesFromSistemaMaestro_();
       data.pesajes = pesajesData.rows;
       return jsonOut_(data);
@@ -51,7 +85,15 @@ function doPost(e) {
       body = (e && e.parameter) ? e.parameter : {};
     }
 
+    const auth = verifySyncToken_(body.token || (e && e.parameter && e.parameter.token));
+    if (!auth.ok) {
+      return jsonOut_(auth);
+    }
+
     const action = body.action || 'upsert_daily_log';
+    if (action === 'cloud_sync') {
+      return jsonOut_(handleCloudSync_(body));
+    }
     if (action === 'upsert_daily_log') {
       const result = upsertPesajeRow_(body);
       return jsonOut_(result);
@@ -68,6 +110,278 @@ function doPost(e) {
     return jsonOut_({ ok: false, error: String(err) });
   }
 }
+
+// ==================== CLOUD STATE FILE & MERGE ENGINE ====================
+
+function getOrCreateCloudStateFile_() {
+  const iter = DriveApp.searchFiles(
+    "title = '" + CLOUD_STATE_FILENAME + "' and trashed = false"
+  );
+  if (iter.hasNext()) {
+    return iter.next();
+  }
+
+  let parentFolder = null;
+  try {
+    const smFile = findLatestSistemaMaestroFile_();
+    const parents = smFile.getParents();
+    if (parents.hasNext()) parentFolder = parents.next();
+  } catch (_) {}
+
+  const initialJson = JSON.stringify({
+    version: 1,
+    updatedAt: '',
+    logs: {},
+    deletedLogDates: {},
+    neatDraft: null,
+    neatSliders: null,
+    mealExtras: {},
+    factors: null,
+    customEquivalences: null,
+    gymHistory: null,
+    gymState: null
+  });
+
+  if (parentFolder) {
+    return parentFolder.createFile(CLOUD_STATE_FILENAME, initialJson, MimeType.PLAIN_TEXT);
+  }
+  return DriveApp.createFile(CLOUD_STATE_FILENAME, initialJson, MimeType.PLAIN_TEXT);
+}
+
+function readCloudState_() {
+  const file = getOrCreateCloudStateFile_();
+  const txt = file.getBlob().getDataAsString('UTF-8');
+  let parsed = {};
+  try {
+    parsed = JSON.parse(txt || '{}');
+  } catch (_) {
+    parsed = {};
+  }
+  return {
+    file: file,
+    state: normalizeCloudStateShape_(parsed)
+  };
+}
+
+function writeCloudState_(file, stateObj) {
+  file.setContent(JSON.stringify(stateObj));
+}
+
+function normalizeCloudStateShape_(raw) {
+  const s = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  return {
+    version: 1,
+    updatedAt: String(s.updatedAt || ''),
+    logs: (s.logs && typeof s.logs === 'object' && !Array.isArray(s.logs)) ? s.logs : {},
+    deletedLogDates: (s.deletedLogDates && typeof s.deletedLogDates === 'object' && !Array.isArray(s.deletedLogDates)) ? s.deletedLogDates : {},
+    neatDraft: (s.neatDraft && typeof s.neatDraft === 'object') ? s.neatDraft : null,
+    neatSliders: (s.neatSliders && typeof s.neatSliders === 'object') ? s.neatSliders : null,
+    mealExtras: (s.mealExtras && typeof s.mealExtras === 'object' && !Array.isArray(s.mealExtras)) ? s.mealExtras : {},
+    factors: (s.factors && typeof s.factors === 'object') ? s.factors : null,
+    customEquivalences: (s.customEquivalences && typeof s.customEquivalences === 'object') ? s.customEquivalences : null,
+    gymHistory: (s.gymHistory && typeof s.gymHistory === 'object') ? s.gymHistory : null,
+    gymState: (s.gymState && typeof s.gymState === 'object') ? s.gymState : null
+  };
+}
+
+function toEpochMs_(iso) {
+  if (!iso) return 0;
+  const t = Date.parse(String(iso));
+  return isNaN(t) ? 0 : t;
+}
+
+function mergeLogEntry_(entryA, entryB) {
+  if (!entryA) return entryB || null;
+  if (!entryB) return entryA || null;
+  const tsA = toEpochMs_(entryA.updatedAt);
+  const tsB = toEpochMs_(entryB.updatedAt);
+  const primary = tsB >= tsA ? entryB : entryA;
+  const secondary = primary === entryB ? entryA : entryB;
+
+  const merged = JSON.parse(JSON.stringify(primary));
+  const primHasSteps = (Number(merged.totalSteps) > 0) || (Array.isArray(merged.items) && merged.items.length > 0);
+  const secHasSteps = (Number(secondary.totalSteps) > 0) || (Array.isArray(secondary.items) && secondary.items.length > 0);
+  if (!primHasSteps && secHasSteps && !merged.explicitClearSteps) {
+    merged.items = Array.isArray(secondary.items) ? secondary.items : [];
+    merged.totalSteps = Number(secondary.totalSteps) || 0;
+    merged.totalKcalGross = Number(secondary.totalKcalGross) || 0;
+    merged.totalKcalNet = Number(secondary.totalKcalNet) || 0;
+    merged.totalMinutes = Number(secondary.totalMinutes) || 0;
+    merged.totalKm = Number(secondary.totalKm) || 0;
+  }
+  if ((merged.weightKg === null || merged.weightKg === undefined) && secondary.weightKg !== null && secondary.weightKg !== undefined) {
+    merged.weightKg = secondary.weightKg;
+  }
+  if ((merged.waistCm === null || merged.waistCm === undefined) && secondary.waistCm !== null && secondary.waistCm !== undefined) {
+    merged.waistCm = secondary.waistCm;
+  }
+  if ((merged.bodyFatPct === null || merged.bodyFatPct === undefined) && secondary.bodyFatPct !== null && secondary.bodyFatPct !== undefined) {
+    merged.bodyFatPct = secondary.bodyFatPct;
+  }
+  if (!merged.note && secondary.note) {
+    merged.note = secondary.note;
+  }
+  return merged;
+}
+
+function pickNewerBlock_(blockA, blockB) {
+  if (!blockA) return blockB || null;
+  if (!blockB) return blockA || null;
+  return toEpochMs_(blockB.updatedAt) >= toEpochMs_(blockA.updatedAt) ? blockB : blockA;
+}
+
+function mergeDraft_(draftA, draftB) {
+  if (!draftA) return draftB || null;
+  if (!draftB) return draftA || null;
+  const dateA = String(draftA.date || '');
+  const dateB = String(draftB.date || '');
+  if (dateA && dateB && dateA !== dateB) {
+    return dateB > dateA ? draftB : draftA;
+  }
+  return toEpochMs_(draftB.updatedAt) >= toEpochMs_(draftA.updatedAt) ? draftB : draftA;
+}
+
+function mergeCloudStates_(rawCloud, rawIncoming) {
+  const cloud = normalizeCloudStateShape_(rawCloud);
+  const incoming = normalizeCloudStateShape_(rawIncoming);
+
+  // 1. Tombstones (borrados de logs)
+  const deletedDates = {};
+  const allDelKeys = {};
+  Object.keys(cloud.deletedLogDates).forEach(function (k) { allDelKeys[k] = true; });
+  Object.keys(incoming.deletedLogDates).forEach(function (k) { allDelKeys[k] = true; });
+  Object.keys(allDelKeys).forEach(function (d) {
+    const tA = toEpochMs_(cloud.deletedLogDates[d]);
+    const tB = toEpochMs_(incoming.deletedLogDates[d]);
+    deletedDates[d] = tB >= tA ? incoming.deletedLogDates[d] : cloud.deletedLogDates[d];
+  });
+
+  // 2. Logs diarios por fecha
+  const mergedLogs = {};
+  const allLogDates = {};
+  Object.keys(cloud.logs).forEach(function (k) { allLogDates[k] = true; });
+  Object.keys(incoming.logs).forEach(function (k) { allLogDates[k] = true; });
+
+  Object.keys(allLogDates).forEach(function (d) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const candidate = mergeLogEntry_(cloud.logs[d], incoming.logs[d]);
+    if (!candidate) return;
+    const delTs = toEpochMs_(deletedDates[d]);
+    const logTs = toEpochMs_(candidate.updatedAt);
+    if (delTs > logTs) {
+      return; // El borrado es más reciente que el último guardado
+    }
+    mergedLogs[d] = candidate;
+  });
+
+  // 3. Meal Extras por fecha
+  const mergedExtras = {};
+  const allExDates = {};
+  Object.keys(cloud.mealExtras).forEach(function (k) { allExDates[k] = true; });
+  Object.keys(incoming.mealExtras).forEach(function (k) { allExDates[k] = true; });
+  Object.keys(allExDates).forEach(function (d) {
+    const picked = pickNewerBlock_(cloud.mealExtras[d], incoming.mealExtras[d]);
+    if (picked) mergedExtras[d] = picked;
+  });
+
+  return {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    logs: mergedLogs,
+    deletedLogDates: deletedDates,
+    neatDraft: mergeDraft_(cloud.neatDraft, incoming.neatDraft),
+    neatSliders: pickNewerBlock_(cloud.neatSliders, incoming.neatSliders),
+    mealExtras: mergedExtras,
+    factors: pickNewerBlock_(cloud.factors, incoming.factors),
+    customEquivalences: pickNewerBlock_(cloud.customEquivalences, incoming.customEquivalences),
+    gymHistory: pickNewerBlock_(cloud.gymHistory, incoming.gymHistory),
+    gymState: pickNewerBlock_(cloud.gymState, incoming.gymState)
+  };
+}
+
+function hydrateStateWithSheetPesajes_(stateObj) {
+  try {
+    const sheetData = readPesajesFromSistemaMaestro_();
+    const rows = sheetData.rows || [];
+    let touched = false;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r.date) continue;
+      if (stateObj.deletedLogDates && stateObj.deletedLogDates[r.date]) continue;
+      if (!stateObj.logs[r.date]) {
+        stateObj.logs[r.date] = {
+          date: r.date,
+          items: [],
+          totalSteps: 0,
+          totalKcalGross: 0,
+          totalKcalNet: 0,
+          totalMinutes: 0,
+          totalKm: 0,
+          weightKg: r.weightKg,
+          waistCm: r.waistCm,
+          bodyFatPct: r.bodyFatPct,
+          note: r.note || '',
+          updatedAt: r.date + 'T12:00:00.000Z'
+        };
+        touched = true;
+      }
+    }
+    return touched;
+  } catch (_) {
+    return false;
+  }
+}
+
+function handleCloudPull_() {
+  const readRes = readCloudState_();
+  const stateObj = readRes.state;
+  const hydrated = hydrateStateWithSheetPesajes_(stateObj);
+  if (hydrated) {
+    writeCloudState_(readRes.file, stateObj);
+  }
+  return {
+    ok: true,
+    syncedAt: new Date().toISOString(),
+    state: stateObj
+  };
+}
+
+function handleCloudSync_(body) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(12000);
+  try {
+    const readRes = readCloudState_();
+    const cloud = readRes.state;
+    hydrateStateWithSheetPesajes_(cloud);
+
+    const incoming = body && body.state ? body.state : {};
+    const merged = mergeCloudStates_(cloud, incoming);
+    writeCloudState_(readRes.file, merged);
+
+    let sheetsUpdated = 0;
+    const changedDates = Array.isArray(body.changedDates) ? body.changedDates : [];
+    for (let i = 0; i < changedDates.length; i++) {
+      const d = changedDates[i];
+      if (merged.logs[d]) {
+        try {
+          upsertPesajeRow_(merged.logs[d]);
+          sheetsUpdated += 1;
+        } catch (_) {}
+      }
+    }
+
+    return {
+      ok: true,
+      syncedAt: merged.updatedAt,
+      sheetsUpdated: sheetsUpdated,
+      state: merged
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==================== GOOGLE SHEETS HELPERS ====================
 
 function findLatestSistemaMaestroFile_() {
   const files = DriveApp.searchFiles(
@@ -273,7 +587,8 @@ function upsertPesajeRow_(entry) {
     : (existingRowVals ? String(existingRowVals[7] || '').trim() : '');
 
   const stepsNum = parseLocaleNum_(entry.totalSteps);
-  if (stepsNum !== null && stepsNum > 0 && noteStr.indexOf('pasos') < 0) {
+  if (stepsNum !== null && stepsNum > 0) {
+    noteStr = noteStr.replace(/\s*\|\s*NEAT:\s*\d+\s*pasos/i, '').replace(/^NEAT:\s*\d+\s*pasos$/i, '').trim();
     const stepsTag = 'NEAT: ' + Math.round(stepsNum) + ' pasos';
     noteStr = noteStr ? (noteStr + ' | ' + stepsTag) : stepsTag;
   }

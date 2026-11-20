@@ -555,7 +555,7 @@
       </div>
 
       <p class="inset-row-desc" style="margin-top:0;">
-        La app funciona 100% sin internet guardando tus datos localmente. Cuando hay señal, sincroniza tus registros diarios con la planilla <strong>Sistema Maestro v7.1</strong>.
+        La app funciona 100% sin internet guardando tus datos localmente. Cuando hay señal, sincroniza <strong>Home, NEAT, Meals y Gym</strong> entre tu PC y tu iPhone mediante tu Google Drive y la planilla <strong>Sistema Maestro v7.1</strong>.
       </p>
 
       <div class="field" style="margin-bottom: 10px;">
@@ -563,10 +563,34 @@
         <input id="sync-endpoint-input" class="input input-sm" type="url" placeholder="https://script.google.com/macros/s/.../exec">
       </div>
 
+      <div class="field" style="margin-bottom: 10px;">
+        <label for="sync-token-input">Clave privada de sync (debe coincidir con SYNC_SECRET)</label>
+        <div class="btn-row" style="align-items:stretch;">
+          <input id="sync-token-input" class="input input-sm" style="flex:1;" type="password" autocomplete="off" placeholder="Tu clave privada PC ↔ iPhone">
+          <button type="button" class="btn btn-sm" id="btn-toggle-sync-token" aria-label="Mostrar u ocultar clave">Ver</button>
+        </div>
+      </div>
+
+      <div class="sub-label" id="sheet-sync-detail" style="margin-bottom: 10px;">
+        Ingresá la misma clave privada en PC e iPhone para sincronizar entre dispositivos.
+      </div>
+
       <div class="btn-row" style="margin-bottom: 12px;">
         <button type="button" class="btn btn-primary btn-sm btn-grow" id="btn-sheet-sync-now">Sincronizar ahora</button>
-        <button type="button" class="btn btn-sm" id="btn-sheet-save-url">Guardar URL</button>
+        <button type="button" class="btn btn-sm" id="btn-sheet-save-url">Guardar config</button>
       </div>
+
+      <details class="menu-details" style="margin-bottom: 12px; padding: 10px 12px; border-radius: var(--r-ctrl); background: var(--surface-3); border: 0.5px solid var(--separator);">
+        <summary>
+          <span style="font-size:13px;">Cómo activar en script.google.com (1 sola vez)</span>
+          <span class="sub-label">Ver pasos ⌄</span>
+        </summary>
+        <ol class="inset-row-desc" style="margin: 8px 0 0; padding-left: 18px;">
+          <li>Abrí tu proyecto en <strong>script.google.com</strong> y pegá el nuevo código de <code>gym/apps_script_sync.gs</code>.</li>
+          <li>Cambiá <code>const SYNC_SECRET = '...'</code> por una clave tuya privada.</li>
+          <li>Tocá <strong>Implementar → Administrar implementaciones → Editar (lápiz) → Nueva versión → Implementar</strong>.</li>
+        </ol>
+      </details>
 
       <div class="card-header" style="margin-bottom: 8px; padding-top: 10px; border-top: 0.5px solid var(--separator);">
         <span class="card-title">Planillas y Archivos de Respaldo</span>

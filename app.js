@@ -5,11 +5,17 @@
   const KEYS = {
     logs: 'sm_neat_v7_2_logs',
     neatDraft: 'sm_neat_v7_2_today',
+    neatSliders: 'sm_neat_v7_1_state',
     gymState: 'sm_gym_state_v1',
+    gymHistory: 'sm_gym_history_v1',
     gymSync: 'sm_gym_sheets_sync_v1',
     seededFlag: 'forma_hist_seeded_v1',
     syncUrl: 'forma_sync_url_v1',
+    syncToken: 'forma_sync_token_v1',
     syncQueue: 'forma_sync_queue_v1',
+    cloudDirty: 'forma_cloud_dirty_v1',
+    deletedLogs: 'forma_deleted_logs_v1',
+    metaTs: 'forma_meta_timestamps_v1',
     lastSync: 'forma_last_sync_v1',
     factors: 'forma_cooking_factors_v1',
     customEq: 'forma_custom_equivalences_v1',
@@ -158,6 +164,8 @@
   let logFilter = 'all';
   let logs = {};
   let syncQueue = {};
+  let deletedLogs = {};
+  let metaTs = {};
   let factors = [];
   let customEquivalences = [];
   let mealExtras = {};
@@ -166,6 +174,8 @@
   let toastTimer = null;
   let swReady = false;
   let syncBusy = false;
+  let syncDebounceTimer = null;
+  let lastAutoPullMs = 0;
   const loadedFrames = { gym: false, neat: false };
 
   // ==================== HELPERS ====================
@@ -275,6 +285,15 @@
     const q = readJsonStorage(KEYS.syncQueue, {});
     syncQueue = q && typeof q === 'object' && !Array.isArray(q) ? q : {};
 
+    const d = readJsonStorage(KEYS.deletedLogs, {});
+    deletedLogs = d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+
+    const ts = readJsonStorage(KEYS.metaTs, {});
+    metaTs = ts && typeof ts === 'object' && !Array.isArray(ts) ? ts : {};
+    if (!metaTs.mealExtrasDates || typeof metaTs.mealExtrasDates !== 'object') {
+      metaTs.mealExtrasDates = {};
+    }
+
     const savedFactors = readJsonStorage(KEYS.factors, null);
     factors = Array.isArray(savedFactors) && savedFactors.length ? savedFactors : DEFAULT_FACTORS.map((x) => ({ ...x }));
 
@@ -286,6 +305,62 @@
 
     const savedExtras = readJsonStorage(KEYS.mealExtras, {});
     mealExtras = savedExtras && typeof savedExtras === 'object' ? savedExtras : {};
+  }
+
+  function touchMetaTs(field, subDate = null) {
+    const nowIso = new Date().toISOString();
+    if (!metaTs || typeof metaTs !== 'object') metaTs = { mealExtrasDates: {} };
+    if (!metaTs.mealExtrasDates) metaTs.mealExtrasDates = {};
+    if (field === 'mealExtras' && subDate) {
+      metaTs.mealExtrasDates[subDate] = nowIso;
+    } else {
+      metaTs[field] = nowIso;
+    }
+    writeJsonStorage(KEYS.metaTs, metaTs);
+    return nowIso;
+  }
+
+  function getSyncToken() {
+    try {
+      return String(localStorage.getItem(KEYS.syncToken) || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function setSyncToken(tok) {
+    try {
+      localStorage.setItem(KEYS.syncToken, String(tok || '').trim());
+    } catch (_) {}
+  }
+
+  function isCloudDirty() {
+    try {
+      return localStorage.getItem(KEYS.cloudDirty) === '1' || Object.keys(syncQueue).length > 0;
+    } catch (_) {
+      return Object.keys(syncQueue).length > 0;
+    }
+  }
+
+  function markCloudDirty(changedDate = null) {
+    try { localStorage.setItem(KEYS.cloudDirty, '1'); } catch (_) {}
+    if (changedDate && /^\d{4}-\d{2}-\d{2}$/.test(changedDate) && logs[changedDate]) {
+      syncQueue[changedDate] = {
+        date: changedDate,
+        weightKg: logs[changedDate].weightKg,
+        waistCm: logs[changedDate].waistCm,
+        bodyFatPct: logs[changedDate].bodyFatPct,
+        totalSteps: logs[changedDate].totalSteps,
+        note: logs[changedDate].note
+      };
+      writeJsonStorage(KEYS.syncQueue, syncQueue);
+    }
+  }
+
+  function clearCloudDirty() {
+    try { localStorage.setItem(KEYS.cloudDirty, '0'); } catch (_) {}
+    syncQueue = {};
+    writeJsonStorage(KEYS.syncQueue, syncQueue);
   }
 
   function getSyncUrl() {
@@ -306,10 +381,15 @@
     }
   }
 
-  function notifyOtherModules() {
+  function notifyOtherModules(eventType = 'forma-logs-updated') {
+    const origin = location.origin === 'null' ? '*' : location.origin;
     if (loadedFrames.neat) {
       const f = document.getElementById('frame-neat');
-      if (f && f.contentWindow) f.contentWindow.postMessage({ type: 'forma-logs-updated' }, '*');
+      if (f && f.contentWindow) f.contentWindow.postMessage({ type: eventType }, origin);
+    }
+    if (loadedFrames.gym && eventType === 'forma-cloud-synced') {
+      const fg = document.getElementById('frame-gym');
+      if (fg && fg.contentWindow) fg.contentWindow.postMessage({ type: 'forma-cloud-synced' }, origin);
     }
   }
 
@@ -614,13 +694,16 @@
         if (!window.confirm(`¿Eliminar el registro del ${formatDateDisplay(d)}?`)) return;
         delete logs[d];
         delete syncQueue[d];
+        deletedLogs[d] = new Date().toISOString();
         writeJsonStorage(KEYS.logs, logs);
         writeJsonStorage(KEYS.syncQueue, syncQueue);
+        writeJsonStorage(KEYS.deletedLogs, deletedLogs);
         if (document.getElementById('hl-date').value === d) {
           loadDateIntoHomeForm(d);
         }
         renderHome();
-        notifyOtherModules();
+        notifyOtherModules('forma-logs-updated');
+        scheduleCloudPush();
         showToast(`Registro del ${formatShortDate(d)} eliminado`);
       });
     });
@@ -689,58 +772,246 @@
     };
 
     writeJsonStorage(KEYS.logs, logs);
-
-    // Encolar para sincronización híbrida con Google Sheets
-    syncQueue[dateIso] = {
-      date: dateIso,
-      weightKg: logs[dateIso].weightKg,
-      waistCm: logs[dateIso].waistCm,
-      bodyFatPct: logs[dateIso].bodyFatPct,
-      totalSteps: logs[dateIso].totalSteps,
-      note: logs[dateIso].note
-    };
-    writeJsonStorage(KEYS.syncQueue, syncQueue);
+    if (deletedLogs[dateIso]) {
+      delete deletedLogs[dateIso];
+      writeJsonStorage(KEYS.deletedLogs, deletedLogs);
+    }
 
     loadDateIntoHomeForm(dateIso);
     renderHome();
-    notifyOtherModules();
+    notifyOtherModules('forma-logs-updated');
+    scheduleCloudPush(dateIso);
 
-    if (navigator.onLine) {
+    if (navigator.onLine && getSyncToken()) {
       showToast(`Guardado local · Sincronizando ${formatShortDate(dateIso)}...`);
-      syncWithSheets(false);
+    } else if (!getSyncToken()) {
+      showToast(`Guardado local (${formatShortDate(dateIso)}). Configurá tu Clave Privada para sync PC ↔ iPhone.`);
     } else {
       showToast(`Guardado offline (${formatShortDate(dateIso)}). Se sincronizará al volver internet.`);
     }
   }
 
-  // ==================== HYBRID SYNC WITH GOOGLE SHEETS ====================
+  // ==================== CLOUD SYNC ENGINE (PC <-> IPHONE) ====================
+  function toEpochMs(iso) {
+    if (!iso) return 0;
+    const t = Date.parse(String(iso));
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  function mergeLogEntryClient(entryA, entryB) {
+    if (!entryA) return entryB || null;
+    if (!entryB) return entryA || null;
+    const primary = toEpochMs(entryB.updatedAt) >= toEpochMs(entryA.updatedAt) ? entryB : entryA;
+    const secondary = primary === entryB ? entryA : entryB;
+    const merged = JSON.parse(JSON.stringify(primary));
+
+    const primHasSteps = (Number(merged.totalSteps) > 0) || (Array.isArray(merged.items) && merged.items.length > 0);
+    const secHasSteps = (Number(secondary.totalSteps) > 0) || (Array.isArray(secondary.items) && secondary.items.length > 0);
+    if (!primHasSteps && secHasSteps && !merged.explicitClearSteps) {
+      merged.items = Array.isArray(secondary.items) ? secondary.items : [];
+      merged.totalSteps = Number(secondary.totalSteps) || 0;
+      merged.totalKcalGross = Number(secondary.totalKcalGross) || 0;
+      merged.totalKcalNet = Number(secondary.totalKcalNet) || 0;
+      merged.totalMinutes = Number(secondary.totalMinutes) || 0;
+      merged.totalKm = Number(secondary.totalKm) || 0;
+    }
+    if ((merged.weightKg === null || merged.weightKg === undefined) && secondary.weightKg !== null && secondary.weightKg !== undefined) {
+      merged.weightKg = secondary.weightKg;
+    }
+    if ((merged.waistCm === null || merged.waistCm === undefined) && secondary.waistCm !== null && secondary.waistCm !== undefined) {
+      merged.waistCm = secondary.waistCm;
+    }
+    if ((merged.bodyFatPct === null || merged.bodyFatPct === undefined) && secondary.bodyFatPct !== null && secondary.bodyFatPct !== undefined) {
+      merged.bodyFatPct = secondary.bodyFatPct;
+    }
+    if (!merged.note && secondary.note) merged.note = secondary.note;
+    return merged;
+  }
+
+  function collectLocalCloudState() {
+    const neatDraft = readJsonStorage(KEYS.neatDraft, null);
+    const neatSlidersRaw = readJsonStorage(KEYS.neatSliders, null);
+    const neatSliders = neatSlidersRaw && typeof neatSlidersRaw === 'object'
+      ? { ...neatSlidersRaw, updatedAt: neatSlidersRaw.updatedAt || metaTs.neatSliders || '' }
+      : null;
+
+    const wrappedExtras = {};
+    for (const [d, v] of Object.entries(mealExtras || {})) {
+      if (Array.isArray(v)) {
+        wrappedExtras[d] = { items: v, updatedAt: (metaTs.mealExtrasDates && metaTs.mealExtrasDates[d]) || '' };
+      } else if (v && typeof v === 'object') {
+        wrappedExtras[d] = v;
+      }
+    }
+
+    const gymHistRaw = readJsonStorage(KEYS.gymHistory, null);
+    const gymStateRaw = readJsonStorage(KEYS.gymState, null);
+
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      logs,
+      deletedLogDates: deletedLogs,
+      neatDraft,
+      neatSliders,
+      mealExtras: wrappedExtras,
+      factors: { items: factors, updatedAt: metaTs.factors || '' },
+      customEquivalences: { items: customEquivalences, updatedAt: metaTs.customEquivalences || '' },
+      gymHistory: Array.isArray(gymHistRaw) ? { items: gymHistRaw, updatedAt: metaTs.gymHistory || '' } : null,
+      gymState: gymStateRaw && typeof gymStateRaw === 'object' ? { data: gymStateRaw, updatedAt: metaTs.gymState || '' } : null
+    };
+  }
+
+  function mergeRemoteCloudState(remoteState) {
+    if (!remoteState || typeof remoteState !== 'object') return;
+
+    // 1. Tombstones + logs diarios
+    const remDel = (remoteState.deletedLogDates && typeof remoteState.deletedLogDates === 'object') ? remoteState.deletedLogDates : {};
+    const mergedDel = { ...deletedLogs };
+    for (const [d, ts] of Object.entries(remDel)) {
+      if (toEpochMs(ts) >= toEpochMs(mergedDel[d])) mergedDel[d] = ts;
+    }
+    deletedLogs = mergedDel;
+    writeJsonStorage(KEYS.deletedLogs, deletedLogs);
+
+    const remLogs = (remoteState.logs && typeof remoteState.logs === 'object') ? remoteState.logs : {};
+    const allDates = new Set([...Object.keys(logs), ...Object.keys(remLogs)]);
+    const nextLogs = {};
+    for (const d of allDates) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+      const cand = mergeLogEntryClient(logs[d], remLogs[d]);
+      if (!cand) continue;
+      if (toEpochMs(deletedLogs[d]) > toEpochMs(cand.updatedAt)) continue;
+      nextLogs[d] = cand;
+    }
+    logs = nextLogs;
+    writeJsonStorage(KEYS.logs, logs);
+
+    // 2. NEAT Draft del día
+    const localDraft = readJsonStorage(KEYS.neatDraft, null);
+    const remDraft = remoteState.neatDraft;
+    if (remDraft && remDraft.date) {
+      let pickRemoteDraft = false;
+      if (!localDraft || !localDraft.date) pickRemoteDraft = true;
+      else if (remDraft.date > localDraft.date) pickRemoteDraft = true;
+      else if (remDraft.date === localDraft.date && toEpochMs(remDraft.updatedAt) > toEpochMs(localDraft.updatedAt)) {
+        pickRemoteDraft = true;
+      }
+      if (pickRemoteDraft) writeJsonStorage(KEYS.neatDraft, remDraft);
+    }
+
+    // 3. NEAT Sliders
+    const remSliders = remoteState.neatSliders;
+    const localSliders = readJsonStorage(KEYS.neatSliders, null);
+    const localSlidersTs = (localSliders && localSliders.updatedAt) || metaTs.neatSliders || '';
+    if (remSliders && toEpochMs(remSliders.updatedAt) > toEpochMs(localSlidersTs)) {
+      writeJsonStorage(KEYS.neatSliders, remSliders);
+      metaTs.neatSliders = remSliders.updatedAt;
+    }
+
+    // 4. Factores y Equivalencias
+    if (remoteState.factors && Array.isArray(remoteState.factors.items)) {
+      if (toEpochMs(remoteState.factors.updatedAt) > toEpochMs(metaTs.factors)) {
+        factors = remoteState.factors.items;
+        metaTs.factors = remoteState.factors.updatedAt;
+        writeJsonStorage(KEYS.factors, factors);
+      }
+    }
+    if (remoteState.customEquivalences && Array.isArray(remoteState.customEquivalences.items)) {
+      if (toEpochMs(remoteState.customEquivalences.updatedAt) > toEpochMs(metaTs.customEquivalences)) {
+        customEquivalences = remoteState.customEquivalences.items;
+        metaTs.customEquivalences = remoteState.customEquivalences.updatedAt;
+        writeJsonStorage(KEYS.customEq, customEquivalences);
+      }
+    }
+
+    // 5. Meal Extras por fecha
+    if (remoteState.mealExtras && typeof remoteState.mealExtras === 'object') {
+      if (!metaTs.mealExtrasDates) metaTs.mealExtrasDates = {};
+      for (const [d, remObj] of Object.entries(remoteState.mealExtras)) {
+        if (!remObj || !Array.isArray(remObj.items)) continue;
+        const localExTs = metaTs.mealExtrasDates[d] || '';
+        if (toEpochMs(remObj.updatedAt) > toEpochMs(localExTs)) {
+          if (remObj.items.length) mealExtras[d] = remObj.items;
+          else delete mealExtras[d];
+          metaTs.mealExtrasDates[d] = remObj.updatedAt;
+        }
+      }
+      writeJsonStorage(KEYS.mealExtras, mealExtras);
+    }
+
+    // 6. Gym History & Gym State (respetando reloj en curso)
+    if (remoteState.gymHistory && Array.isArray(remoteState.gymHistory.items)) {
+      if (toEpochMs(remoteState.gymHistory.updatedAt) > toEpochMs(metaTs.gymHistory)) {
+        writeJsonStorage(KEYS.gymHistory, remoteState.gymHistory.items);
+        metaTs.gymHistory = remoteState.gymHistory.updatedAt;
+      }
+    }
+    if (remoteState.gymState && remoteState.gymState.data) {
+      const localGym = readJsonStorage(KEYS.gymState, null);
+      const timerActive = !!(localGym && localGym.workoutTimer && localGym.workoutTimer.running);
+      if (!timerActive && toEpochMs(remoteState.gymState.updatedAt) > toEpochMs(metaTs.gymState)) {
+        writeJsonStorage(KEYS.gymState, remoteState.gymState.data);
+        metaTs.gymState = remoteState.gymState.updatedAt;
+      }
+    }
+
+    writeJsonStorage(KEYS.metaTs, metaTs);
+    loadDateIntoHomeForm(document.getElementById('hl-date').value || getTodayIso());
+    notifyOtherModules('forma-cloud-synced');
+    if (activeTab === 'meals') renderMealsAll();
+  }
+
+  function scheduleCloudPush(changedDate = null) {
+    markCloudDirty(changedDate);
+    updateSyncStatusUI();
+    if (!navigator.onLine || !getSyncToken()) return;
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(() => {
+      syncDebounceTimer = null;
+      syncWithSheets(false);
+    }, 1200);
+  }
+
   function updateSyncStatusUI() {
     const dot = document.getElementById('topbar-sync-dot');
     const label = document.getElementById('topbar-sync-label');
     const pendingCount = Object.keys(syncQueue).length;
+    const dirty = isCloudDirty();
+    const token = getSyncToken();
     const qBadge = document.getElementById('sync-queue-badge');
     const summary = document.getElementById('home-sync-summary');
+    const sheetDetail = document.getElementById('sheet-sync-detail');
 
-    qBadge.textContent = pendingCount === 1 ? '1 pendiente' : `${pendingCount} pendientes`;
+    const pendTotal = dirty ? Math.max(1, pendingCount) : pendingCount;
+    qBadge.textContent = pendTotal === 1 ? '1 pendiente' : `${pendTotal} pendientes`;
 
     if (!navigator.onLine) {
       dot.className = 'sync-dot is-offline';
-      label.textContent = pendingCount > 0 ? `Offline (${pendingCount})` : 'Sin conexión';
-      summary.textContent = `Modo offline activo. Tus ${Object.keys(logs).length} días están a salvo en este iPhone${pendingCount ? ` (${pendingCount} en cola para Sheets)` : ''}.`;
-    } else if (pendingCount > 0) {
+      label.textContent = pendTotal > 0 ? `Offline (${pendTotal})` : 'Sin conexión';
+      summary.textContent = `Modo offline activo. Tus ${Object.keys(logs).length} días están a salvo en este dispositivo${pendTotal ? ' (hay cambios esperando señal)' : ''}.`;
+    } else if (!token) {
       dot.className = 'sync-dot is-pending';
-      label.textContent = `Pendiente (${pendingCount})`;
-      summary.textContent = `Tenés ${pendingCount} registro(s) listos para subir a Google Sheets.`;
-    } else if (swReady) {
-      dot.className = 'sync-dot';
-      label.textContent = 'Offline listo';
-      const lastIso = localStorage.getItem(KEYS.lastSync);
-      summary.textContent = lastIso
-        ? `Guardado local al día · Último sync con Google Sheets: ${new Date(lastIso).toLocaleString('es-AR')}.`
-        : 'Base local + caché offline listos. Tocá Sincronizar para respaldar o bajar cambios de Google Sheets.';
+      label.textContent = 'Configurar clave';
+      summary.textContent = 'Guardado local activo. Tocá la píldora superior derecha para ingresar tu Clave Privada y sincronizar PC ↔ iPhone.';
+    } else if (pendTotal > 0) {
+      dot.className = 'sync-dot is-pending';
+      label.textContent = `Pendiente (${pendTotal})`;
+      summary.textContent = 'Cambios listos para sincronizar entre PC, iPhone y Google Sheets.';
     } else {
       dot.className = 'sync-dot';
-      label.textContent = 'En línea';
+      label.textContent = swReady ? 'Sincronizado' : 'En línea';
+      const lastIso = localStorage.getItem(KEYS.lastSync);
+      summary.textContent = lastIso
+        ? `PC ↔ iPhone y respaldo al día · Último sync: ${new Date(lastIso).toLocaleString('es-AR')}.`
+        : 'Base local + sync automático listos. Tocá Sincronizar para traer datos del otro dispositivo.';
+    }
+
+    if (sheetDetail) {
+      const lastIso = localStorage.getItem(KEYS.lastSync);
+      sheetDetail.textContent = !token
+        ? 'Falta ingresar la Clave Privada en este dispositivo.'
+        : (lastIso ? `Clave configurada · Último sync: ${new Date(lastIso).toLocaleString('es-AR')}` : 'Clave configurada · Listo para sincronizar.');
     }
   }
 
@@ -758,60 +1029,69 @@
       return;
     }
 
+    const token = getSyncToken();
+    if (!token) {
+      updateSyncStatusUI();
+      if (manual) {
+        document.getElementById('sync-endpoint-input').value = url;
+        document.getElementById('sync-token-input').value = '';
+        document.getElementById('sync-sheet').classList.add('is-open');
+        document.getElementById('sync-token-input').focus();
+        showToast('Ingresá tu Clave Privada para activar sync PC ↔ iPhone.');
+      }
+      return;
+    }
+
     syncBusy = true;
+    lastAutoPullMs = Date.now();
     try {
-      const pendingKeys = Object.keys(syncQueue);
-      if (pendingKeys.length > 0) {
-        const batch = pendingKeys.map((k) => syncQueue[k]);
+      const shouldPush = manual || isCloudDirty();
+      let resData = null;
+
+      if (shouldPush) {
+        const changedDates = Object.keys(syncQueue);
+        const payload = {
+          action: 'cloud_sync',
+          token,
+          changedDates,
+          state: collectLocalCloudState()
+        };
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'batch_upsert_daily_logs', logs: batch })
+          body: JSON.stringify(payload)
         });
-        const data = await res.json().catch(() => null);
-        if (data && data.ok) {
-          syncQueue = {};
-          writeJsonStorage(KEYS.syncQueue, syncQueue);
-          try { localStorage.setItem(KEYS.lastSync, new Date().toISOString()); } catch (_) {}
-          if (manual) showToast(`Sincronizado con Sheets (${pendingKeys.length} reg.)`);
-        } else if (manual) {
-          showToast('Actualizá el script Apps Script (gym/apps_script_sync.gs) para habilitar subida POST.');
-        }
+        resData = await res.json().catch(() => null);
+      } else {
+        const sep = url.includes('?') ? '&' : '?';
+        const res = await fetch(`${url}${sep}action=cloud_pull&token=${encodeURIComponent(token)}`);
+        resData = await res.json().catch(() => null);
       }
 
-      // Intentar lectura bidireccional de pesajes desde Sheets
-      const sep = url.includes('?') ? '&' : '?';
-      const pullRes = await fetch(`${url}${sep}action=pesajes`);
-      const pullData = await pullRes.json().catch(() => null);
-      if (pullData && pullData.ok && Array.isArray(pullData.rows)) {
-        let added = 0;
-        for (const r of pullData.rows) {
-          if (!r.date || syncQueue[r.date]) continue;
-          const prev = logs[r.date] || {};
-          const mergedWeight = Number.isFinite(r.weightKg) ? r.weightKg : prev.weightKg;
-          const mergedWaist = Number.isFinite(r.waistCm) ? r.waistCm : prev.waistCm;
-          const mergedFat = Number.isFinite(r.bodyFatPct) ? r.bodyFatPct : prev.bodyFatPct;
-          if (!logs[r.date]) added += 1;
-          logs[r.date] = {
-            date: r.date,
-            items: Array.isArray(prev.items) ? prev.items : [],
-            totalSteps: prev.totalSteps || 0,
-            totalKcalGross: prev.totalKcalGross || 0,
-            totalKcalNet: prev.totalKcalNet || 0,
-            totalMinutes: prev.totalMinutes || 0,
-            totalKm: prev.totalKm || 0,
-            weightKg: Number.isFinite(mergedWeight) ? mergedWeight : null,
-            waistCm: Number.isFinite(mergedWaist) ? mergedWaist : null,
-            bodyFatPct: Number.isFinite(mergedFat) ? mergedFat : null,
-            note: prev.note || r.note || '',
-            updatedAt: prev.updatedAt || `${r.date}T12:00:00.000Z`
-          };
+      if (!resData) {
+        if (manual) showToast('Respuesta inválida del servidor. Verificá la implementación de Apps Script.');
+        return;
+      }
+
+      if (resData.error === 'AUTH_NOT_CONFIGURED') {
+        if (manual) showToast('Editá SYNC_SECRET en script.google.com y publicá una Nueva versión.');
+        return;
+      }
+      if (resData.error === 'AUTH_INVALID') {
+        if (manual) showToast('Clave Privada incorrecta. Debe coincidir con SYNC_SECRET.');
+        return;
+      }
+
+      if (resData.ok && resData.state) {
+        mergeRemoteCloudState(resData.state);
+        if (shouldPush) clearCloudDirty();
+        try { localStorage.setItem(KEYS.lastSync, resData.syncedAt || new Date().toISOString()); } catch (_) {}
+        if (manual) {
+          const sheetsNote = resData.sheetsUpdated ? ` · ${resData.sheetsUpdated} fila(s) en Sheet` : '';
+          showToast(`Sincronizado PC ↔ iPhone${sheetsNote}`);
         }
-        writeJsonStorage(KEYS.logs, logs);
-        try { localStorage.setItem(KEYS.lastSync, new Date().toISOString()); } catch (_) {}
-        if (manual && !pendingKeys.length) {
-          showToast(added > 0 ? `Planilla leída (+${added} filas nuevas)` : 'Al día con Google Sheets');
-        }
+      } else if (manual) {
+        showToast('Actualizá tu Apps Script con gym/apps_script_sync.gs (Nueva versión).');
       }
     } catch (_) {
       if (manual) showToast('No se pudo conectar con Apps Script. Revisá internet o la URL.');
@@ -1060,8 +1340,10 @@
     };
     factors.unshift(item);
     writeJsonStorage(KEYS.factors, factors);
+    touchMetaTs('factors');
     renderFactorsSelect();
     document.getElementById('rc-factor-select').value = item.id;
+    scheduleCloudPush();
     showToast(`Factor guardado: ${item.name} (${fmtDec2.format(item.factor)}x)`);
   }
 
@@ -1141,7 +1423,9 @@
       detail: explain
     });
     writeJsonStorage(KEYS.customEq, customEquivalences);
+    touchMetaTs('customEquivalences');
     renderCustomEquivalences();
+    scheduleCloudPush();
     showToast('Guardado en Mis Equivalencias');
   }
 
@@ -1177,7 +1461,9 @@
       btn.addEventListener('click', () => {
         customEquivalences = customEquivalences.filter((x) => x.id !== btn.dataset.delEq);
         writeJsonStorage(KEYS.customEq, customEquivalences);
+        touchMetaTs('customEquivalences');
         renderCustomEquivalences();
+        scheduleCloudPush();
       });
     });
   }
@@ -1233,8 +1519,10 @@
         mealExtras[dateIso] = (mealExtras[dateIso] || []).filter((x) => x.id !== btn.dataset.delExtra);
         if (!mealExtras[dateIso].length) delete mealExtras[dateIso];
         writeJsonStorage(KEYS.mealExtras, mealExtras);
+        touchMetaTs('mealExtras', dateIso);
         renderExtras();
         renderHome();
+        scheduleCloudPush();
       });
     });
   }
@@ -1384,8 +1672,17 @@
     document.getElementById('btn-export-json').addEventListener('click', exportJson);
 
     const syncSheet = document.getElementById('sync-sheet');
+    const tokenIn = document.getElementById('sync-token-input');
+    const toggleTokenBtn = document.getElementById('btn-toggle-sync-token');
+    toggleTokenBtn.addEventListener('click', () => {
+      const hidden = tokenIn.type === 'password';
+      tokenIn.type = hidden ? 'text' : 'password';
+      toggleTokenBtn.textContent = hidden ? 'Ocultar' : 'Ver';
+    });
     document.getElementById('btn-open-sync-sheet').addEventListener('click', () => {
       document.getElementById('sync-endpoint-input').value = getSyncUrl();
+      tokenIn.value = getSyncToken();
+      updateSyncStatusUI();
       syncSheet.classList.add('is-open');
     });
     document.getElementById('btn-close-sync-sheet').addEventListener('click', () => {
@@ -1396,10 +1693,14 @@
     });
     document.getElementById('btn-sheet-save-url').addEventListener('click', () => {
       setSyncUrl(document.getElementById('sync-endpoint-input').value);
-      showToast('URL de Apps Script guardada');
+      setSyncToken(tokenIn.value);
+      updateSyncStatusUI();
+      showToast('Configuración de sync guardada');
     });
     document.getElementById('btn-sheet-sync-now').addEventListener('click', () => {
       setSyncUrl(document.getElementById('sync-endpoint-input').value);
+      setSyncToken(tokenIn.value);
+      updateSyncStatusUI();
       syncWithSheets(true);
     });
     document.getElementById('btn-sheet-csv').addEventListener('click', exportCsv);
@@ -1458,9 +1759,11 @@
       }
       customEquivalences.unshift({ id: `eq_${Date.now()}`, title, detail });
       writeJsonStorage(KEYS.customEq, customEquivalences);
+      touchMetaTs('customEquivalences');
       document.getElementById('new-eq-title').value = '';
       document.getElementById('new-eq-detail').value = '';
       renderCustomEquivalences();
+      scheduleCloudPush();
       showToast('Equivalencia agregada');
     });
 
@@ -1498,6 +1801,7 @@
         fat
       });
       writeJsonStorage(KEYS.mealExtras, mealExtras);
+      touchMetaTs('mealExtras', dateIso);
 
       document.getElementById('ex-preset-select').value = '';
       document.getElementById('ex-name').value = '';
@@ -1507,6 +1811,7 @@
       document.getElementById('ex-fat').value = '';
       renderExtras();
       renderHome();
+      scheduleCloudPush();
       showToast(`Extra sumado (+${fmtInt.format(kcal)} kcal)`);
     });
 
@@ -1515,9 +1820,17 @@
     // Online / Offline & cross-frame sync
     window.addEventListener('online', () => {
       updateSyncStatusUI();
-      if (Object.keys(syncQueue).length > 0) syncWithSheets(false);
+      if (getSyncToken()) syncWithSheets(false);
     });
     window.addEventListener('offline', updateSyncStatusUI);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && getSyncToken()) {
+        if (Date.now() - lastAutoPullMs > 15000) {
+          syncWithSheets(false);
+        }
+      }
+    });
 
     window.addEventListener('storage', () => {
       loadAppData();
@@ -1529,6 +1842,7 @@
       if (e.data.type === 'forma-logs-updated' || e.data.type === 'forma-gym-updated') {
         loadAppData();
         renderHome();
+        scheduleCloudPush(e.data.date || null);
       }
     });
   }
@@ -1548,6 +1862,10 @@
     const hashTab = (location.hash || '').replace('#', '').toLowerCase();
     if (['home', 'gym', 'neat', 'meals'].includes(hashTab) && hashTab !== 'home') {
       switchTab(hashTab);
+    }
+
+    if (navigator.onLine && getSyncToken()) {
+      setTimeout(() => syncWithSheets(false), 350);
     }
   }
 

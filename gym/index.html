@@ -2422,10 +2422,19 @@
         }
       }
 
+      function touchFormaGymTs(field) {
+        try {
+          const ts = JSON.parse(localStorage.getItem('forma_meta_timestamps_v1') || '{}');
+          ts[field] = new Date().toISOString();
+          localStorage.setItem('forma_meta_timestamps_v1', JSON.stringify(ts));
+        } catch (_) {}
+      }
+
       function saveState() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (_) {}
+        touchFormaGymTs('gymState');
         try {
           if (window.parent && window.parent !== window) {
             window.parent.postMessage({ type: 'forma-gym-updated' }, location.origin);
@@ -2446,7 +2455,13 @@
         try {
           localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
         } catch (_) {}
+        touchFormaGymTs('gymHistory');
         updateHistoryCount();
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'forma-gym-updated' }, location.origin);
+          }
+        } catch (_) {}
       }
 
       function loadSpotifyCfg() {
@@ -4522,6 +4537,17 @@
           checkSheetsSync(false);
         }
       }
+
+      window.addEventListener('message', (e) => {
+        if (e.origin !== location.origin || !e.data || e.data.type !== 'forma-cloud-synced') return;
+        history = loadHistory();
+        updateHistoryCount();
+        if (!state.workoutTimer || !state.workoutTimer.running) {
+          state = loadState();
+          renderWorkoutClock();
+        }
+        renderActiveView();
+      });
 
       init();
     })();
