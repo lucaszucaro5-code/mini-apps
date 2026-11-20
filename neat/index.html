@@ -141,7 +141,7 @@
           <div id="seg-bike" class="split-seg" style="background: var(--chart-8); width: 0%;"></div>
         </div>
         <div class="legend-row">
-          <span><span class="legend-dot" style="background: var(--chart-1);"></span>Calle 5 km/h (<span id="leg-street">92 kcal</span>)</span>
+          <span><span class="legend-dot" style="background: var(--chart-1);"></span>Calle <span id="leg-street-speed">5</span> km/h (<span id="leg-street">92 kcal</span>)</span>
           <span><span class="legend-dot" style="background: var(--chart-3);"></span>Cinta inclinada (<span id="leg-incline">248 kcal</span>)</span>
           <span><span class="legend-dot" style="background: var(--chart-8);"></span>Bici MTB <span id="leg-bike-speed">20</span> km/h (<span id="leg-bike">0 kcal</span>)</span>
         </div>
@@ -165,7 +165,7 @@
 
         <div class="lumi-slider-row">
           <div class="lumi-slider-header">
-            <label class="lumi-slider-label" for="in-street">Calle 5 km/h</label>
+            <label class="lumi-slider-label" for="in-street">Caminata en calle</label>
             <button type="button" class="add-act-btn" id="btn-add-street">+ Sumar a hoy</button>
           </div>
           <div class="lumi-slider-container">
@@ -174,6 +174,21 @@
               <button type="button" class="step-btn" data-target="in-street" data-dir="-1" aria-label="Reducir caminata en calle">−</button>
               <div id="val-street" class="lumi-slider-value">20 min</div>
               <button type="button" class="step-btn" data-target="in-street" data-dir="1" aria-label="Aumentar caminata en calle">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lumi-slider-row">
+          <div class="lumi-slider-header">
+            <label class="lumi-slider-label" for="in-street-speed">Velocidad prom. calle</label>
+            <span class="lumi-slider-hint" id="hint-street-rate">4,6 kcal/min · 3,6 METs</span>
+          </div>
+          <div class="lumi-slider-container">
+            <input id="in-street-speed" class="lumi-slider" type="range" min="3.0" max="7.5" step="0.1" value="5.0">
+            <div class="stepper-group">
+              <button type="button" class="step-btn" data-target="in-street-speed" data-dir="-1" aria-label="Reducir velocidad calle">−</button>
+              <div id="val-street-speed" class="lumi-slider-value">5 km/h</div>
+              <button type="button" class="step-btn" data-target="in-street-speed" data-dir="1" aria-label="Aumentar velocidad calle">+</button>
             </div>
           </div>
         </div>

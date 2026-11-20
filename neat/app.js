@@ -5,6 +5,7 @@
   const DRAFT_KEY = 'sm_neat_v7_2_today';
   const LOGS_KEY = 'sm_neat_v7_2_logs';
   const DEFAULT_WEIGHT = 72.7;
+  const DEFAULT_STREET_SPEED = 5.0;
   const DEFAULT_BIKE_SPEED = 20;
 
   const fmtInt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
@@ -20,6 +21,7 @@
 
   const weightEl = document.getElementById('in-weight');
   const streetEl = document.getElementById('in-street');
+  const streetSpeedEl = document.getElementById('in-street-speed');
   const inclineMinEl = document.getElementById('in-incline-min');
   const gradeEl = document.getElementById('in-grade');
   const bikeEl = document.getElementById('in-bike');
@@ -91,6 +93,15 @@
   }
 
   // ==================== FÍSICA NEAT v7.1 ====================
+  function calcStreetWalkRate(weight, speedKmh) {
+    const scale = weight / 72.5;
+    const restKcalPerMin = (3.5 * weight) / 200;
+    const extraSpeed = Math.max(0, speedKmh - 5.0);
+    const kcalPerMin = restKcalPerMin + scale * (0.66425 * speedKmh + 0.14 * extraSpeed * extraSpeed);
+    const mets = restKcalPerMin > 0 ? kcalPerMin / restKcalPerMin : 0;
+    return { kcalPerMin, mets };
+  }
+
   function calcMtbBikeRate(weight, speedKmh) {
     // MTB en terreno mixto (ciudad, campo y ruta): Crr=0.008, CdA=0.50 m², bici+equipo=13 kg, transmisión 96% + ecuación ACSM
     const v = speedKmh / 3.6;
@@ -109,16 +120,19 @@
 
     if (type === 'street') {
       const minutes = params.minutes || 0;
-      const kcalGross = minutes * (4.59 * scale);
+      const speedKmh = params.speedKmh || DEFAULT_STREET_SPEED;
+      const rate = calcStreetWalkRate(weight, speedKmh);
+      const kcalGross = minutes * rate.kcalPerMin;
       const kcalNet = Math.max(0, kcalGross - minutes * restKcalPerMin);
-      const km = (minutes * 5) / 60;
+      const km = (minutes * speedKmh) / 60;
       const steps = Math.round((kcalGross / target10kKcal) * 10000);
       return {
         type: 'street',
-        label: 'Calle 5 km/h',
+        label: `Calle ${fmtSpeed(speedKmh)} km/h`,
         detail: `${minutes} min · ${fmtDec.format(km)} km`,
         minutes,
         km,
+        speedKmh,
         kcalGross,
         kcalNet,
         steps
@@ -219,6 +233,7 @@
     const state = {
       weight: parseFloat(weightEl.value),
       street: parseFloat(streetEl.value),
+      streetSpeed: parseFloat(streetSpeedEl.value),
       inclineMin: parseFloat(inclineMinEl.value),
       grade: parseFloat(gradeEl.value),
       bike: parseFloat(bikeEl.value),
@@ -241,6 +256,7 @@
 
     if (saved && typeof saved === 'object') {
       weightEl.value = clampToInput(weightEl, saved.weight, DEFAULT_WEIGHT);
+      streetSpeedEl.value = clampToInput(streetSpeedEl, saved.streetSpeed, DEFAULT_STREET_SPEED);
       bikeSpeedEl.value = clampToInput(bikeSpeedEl, saved.bikeSpeed, DEFAULT_BIKE_SPEED);
 
       if (saved.preset && PRESETS[saved.preset]) {
@@ -249,6 +265,7 @@
         inclineMinEl.value = p.inclineMin;
         gradeEl.value = p.grade;
         bikeEl.value = p.bike;
+        if (p.streetSpeed !== undefined) streetSpeedEl.value = p.streetSpeed;
         if (p.bikeSpeed !== undefined) bikeSpeedEl.value = p.bikeSpeed;
       } else {
         streetEl.value = clampToInput(streetEl, saved.street, PRESETS.gym.street);
@@ -259,6 +276,7 @@
     } else {
       weightEl.value = DEFAULT_WEIGHT;
       streetEl.value = PRESETS.gym.street;
+      streetSpeedEl.value = DEFAULT_STREET_SPEED;
       inclineMinEl.value = PRESETS.gym.inclineMin;
       gradeEl.value = PRESETS.gym.grade;
       bikeEl.value = PRESETS.gym.bike;
@@ -397,6 +415,7 @@
   function updateCalc(persist = true) {
     const weight = parseFloat(weightEl.value);
     const streetMin = parseFloat(streetEl.value);
+    const streetSpeed = parseFloat(streetSpeedEl.value);
     const inclineMin = parseFloat(inclineMinEl.value);
     const grade = parseFloat(gradeEl.value);
     const bikeMin = parseFloat(bikeEl.value);
@@ -405,7 +424,8 @@
     const scale = weight / 72.5;
     const restKcalPerMin = (3.5 * weight) / 200;
 
-    const streetKcal = streetMin * (4.59 * scale);
+    const streetMetrics = calcStreetWalkRate(weight, streetSpeed);
+    const streetKcal = streetMin * streetMetrics.kcalPerMin;
     const inclineRate = (4.59 + 0.415 * grade) * scale;
     const inclineKcal = inclineMin * inclineRate;
     const bikeMetrics = calcMtbBikeRate(weight, bikeSpeed);
@@ -417,10 +437,13 @@
 
     const target10kKcal = 418 * scale;
     const eqSteps = Math.round((totalKcal / target10kKcal) * 10000);
-    const totalKm = ((streetMin + inclineMin) * 5 + bikeMin * bikeSpeed) / 60;
+    const totalKm = (streetMin * streetSpeed + inclineMin * 5 + bikeMin * bikeSpeed) / 60;
 
     document.getElementById('val-weight').textContent = `${fmtDec.format(weight)} kg`;
     document.getElementById('val-street').textContent = `${streetMin} min`;
+    document.getElementById('val-street-speed').textContent = `${fmtSpeed(streetSpeed)} km/h`;
+    document.getElementById('leg-street-speed').textContent = fmtSpeed(streetSpeed);
+    document.getElementById('hint-street-rate').textContent = `${fmtDec.format(streetMetrics.kcalPerMin)} kcal/min · ${fmtDec.format(streetMetrics.mets)} METs`;
     document.getElementById('val-incline-min').textContent = `${inclineMin} min`;
     document.getElementById('val-grade').textContent = `${grade}%`;
     document.getElementById('val-bike').textContent = `${bikeMin} min`;
@@ -988,8 +1011,9 @@
   document.getElementById('btn-add-street').addEventListener('click', () => {
     const w = parseFloat(weightEl.value);
     const m = parseFloat(streetEl.value);
+    const sp = parseFloat(streetSpeedEl.value);
     if (m <= 0) return;
-    addActivityToDraft(calcActivityMetrics('street', w, { minutes: m }));
+    addActivityToDraft(calcActivityMetrics('street', w, { minutes: m, speedKmh: sp }));
   });
 
   document.getElementById('btn-add-incline').addEventListener('click', () => {
@@ -1011,12 +1035,13 @@
   document.getElementById('btn-add-all').addEventListener('click', () => {
     const w = parseFloat(weightEl.value);
     const st = parseFloat(streetEl.value);
+    const stSp = parseFloat(streetSpeedEl.value);
     const inc = parseFloat(inclineMinEl.value);
     const gr = parseFloat(gradeEl.value);
     const bk = parseFloat(bikeEl.value);
     const sp = parseFloat(bikeSpeedEl.value);
     const added = [];
-    if (st > 0) added.push(calcActivityMetrics('street', w, { minutes: st }));
+    if (st > 0) added.push(calcActivityMetrics('street', w, { minutes: st, speedKmh: stSp }));
     if (inc > 0) added.push(calcActivityMetrics('incline', w, { minutes: inc, grade: gr }));
     if (bk > 0) added.push(calcActivityMetrics('bike', w, { minutes: bk, speedKmh: sp }));
     if (!added.length) return;
@@ -1076,12 +1101,13 @@
       inclineMinEl.value = p.inclineMin;
       gradeEl.value = p.grade;
       bikeEl.value = p.bike;
+      if (p.streetSpeed !== undefined) streetSpeedEl.value = p.streetSpeed;
       if (p.bikeSpeed !== undefined) bikeSpeedEl.value = p.bikeSpeed;
       updateCalc(true);
     });
   });
 
-  [weightEl, streetEl, inclineMinEl, gradeEl, bikeEl, bikeSpeedEl].forEach((el) => {
+  [weightEl, streetEl, streetSpeedEl, inclineMinEl, gradeEl, bikeEl, bikeSpeedEl].forEach((el) => {
     el.addEventListener('input', () => updateCalc(true));
   });
 
