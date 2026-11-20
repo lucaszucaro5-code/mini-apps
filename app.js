@@ -17,6 +17,7 @@
     deletedLogs: 'forma_deleted_logs_v1',
     metaTs: 'forma_meta_timestamps_v1',
     lastSync: 'forma_last_sync_v1',
+    lastSyncError: 'forma_last_sync_error_v1',
     factors: 'forma_cooking_factors_v1',
     customEq: 'forma_custom_equivalences_v1',
     mealExtras: 'forma_meals_extras_v1',
@@ -174,6 +175,7 @@
   let toastTimer = null;
   let swReady = false;
   let syncBusy = false;
+  let syncQueuedWhileBusy = false;
   let syncDebounceTimer = null;
   let lastAutoPullMs = 0;
   const loadedFrames = { gym: false, neat: false };
@@ -416,6 +418,9 @@
     if (tab === 'home') {
       loadAppData();
       renderHome();
+      if (isCloudDirty() && navigator.onLine && getSyncToken() && !syncBusy) {
+        syncWithSheets(false);
+      }
     }
     if (tab === 'meals') {
       renderMealsAll();
@@ -892,10 +897,16 @@
     const remDraft = remoteState.neatDraft;
     if (remDraft && remDraft.date) {
       let pickRemoteDraft = false;
+      const localHasItems = localDraft && Array.isArray(localDraft.items) && localDraft.items.length > 0;
+      const remHasItems = Array.isArray(remDraft.items) && remDraft.items.length > 0;
       if (!localDraft || !localDraft.date) pickRemoteDraft = true;
       else if (remDraft.date > localDraft.date) pickRemoteDraft = true;
-      else if (remDraft.date === localDraft.date && toEpochMs(remDraft.updatedAt) > toEpochMs(localDraft.updatedAt)) {
-        pickRemoteDraft = true;
+      else if (remDraft.date === localDraft.date) {
+        if (!localHasItems && !localDraft.explicitClear && remHasItems) {
+          pickRemoteDraft = true;
+        } else if (toEpochMs(remDraft.updatedAt) > toEpochMs(localDraft.updatedAt)) {
+          pickRemoteDraft = true;
+        }
       }
       if (pickRemoteDraft) writeJsonStorage(KEYS.neatDraft, remDraft);
     }
@@ -979,6 +990,7 @@
     const pendingCount = Object.keys(syncQueue).length;
     const dirty = isCloudDirty();
     const token = getSyncToken();
+    const lastErr = String(localStorage.getItem(KEYS.lastSyncError) || '');
     const qBadge = document.getElementById('sync-queue-badge');
     const summary = document.getElementById('home-sync-summary');
     const sheetDetail = document.getElementById('sheet-sync-detail');
@@ -994,10 +1006,20 @@
       dot.className = 'sync-dot is-pending';
       label.textContent = 'Configurar clave';
       summary.textContent = 'Guardado local activo. Tocá la píldora superior derecha para ingresar tu Clave Privada y sincronizar PC ↔ iPhone.';
+    } else if (lastErr === 'AUTH_INVALID') {
+      dot.className = 'sync-dot is-offline';
+      label.textContent = 'Revisar clave';
+      summary.textContent = 'La clave privada en este dispositivo no coincide con SYNC_SECRET (revisá mayúsculas o espacios).';
+    } else if (lastErr === 'AUTH_NOT_CONFIGURED') {
+      dot.className = 'sync-dot is-offline';
+      label.textContent = 'Falta SYNC_SECRET';
+      summary.textContent = 'Falta cambiar SYNC_SECRET y publicar Nueva versión en Google Apps Script.';
     } else if (pendTotal > 0) {
       dot.className = 'sync-dot is-pending';
       label.textContent = `Pendiente (${pendTotal})`;
-      summary.textContent = 'Cambios listos para sincronizar entre PC, iPhone y Google Sheets.';
+      summary.textContent = lastErr
+        ? `Pendiente de sync (${lastErr}). Tocá Sincronizar con Sheets para reintentar.`
+        : 'Cambios listos para sincronizar entre PC, iPhone y Google Sheets.';
     } else {
       dot.className = 'sync-dot';
       label.textContent = swReady ? 'Sincronizado' : 'En línea';
@@ -1009,14 +1031,27 @@
 
     if (sheetDetail) {
       const lastIso = localStorage.getItem(KEYS.lastSync);
-      sheetDetail.textContent = !token
-        ? 'Falta ingresar la Clave Privada en este dispositivo.'
-        : (lastIso ? `Clave configurada · Último sync: ${new Date(lastIso).toLocaleString('es-AR')}` : 'Clave configurada · Listo para sincronizar.');
+      if (!token) {
+        sheetDetail.textContent = 'Falta ingresar la Clave Privada en este dispositivo.';
+      } else if (lastErr === 'AUTH_INVALID') {
+        sheetDetail.textContent = 'Error: Clave Privada incorrecta (revisá mayúsculas o espacios).';
+      } else if (lastErr === 'AUTH_NOT_CONFIGURED') {
+        sheetDetail.textContent = 'Error: SYNC_SECRET no configurado en Apps Script.';
+      } else if (lastErr) {
+        sheetDetail.textContent = `Último intento fallido (${lastErr}). Reintentando al sincronizar.`;
+      } else {
+        sheetDetail.textContent = lastIso
+          ? `Clave configurada · Último sync: ${new Date(lastIso).toLocaleString('es-AR')}`
+          : 'Clave configurada · Listo para sincronizar.';
+      }
     }
   }
 
   async function syncWithSheets(manual = false) {
-    if (syncBusy) return;
+    if (syncBusy) {
+      syncQueuedWhileBusy = true;
+      return;
+    }
     if (!navigator.onLine) {
       if (manual) showToast('Sin conexión. Tus datos siguen seguros offline.');
       updateSyncStatusUI();
@@ -1069,20 +1104,24 @@
       }
 
       if (!resData) {
+        try { localStorage.setItem(KEYS.lastSyncError, 'Respuesta inválida del servidor'); } catch (_) {}
         if (manual) showToast('Respuesta inválida del servidor. Verificá la implementación de Apps Script.');
         return;
       }
 
       if (resData.error === 'AUTH_NOT_CONFIGURED') {
+        try { localStorage.setItem(KEYS.lastSyncError, 'AUTH_NOT_CONFIGURED'); } catch (_) {}
         if (manual) showToast('Editá SYNC_SECRET en script.google.com y publicá una Nueva versión.');
         return;
       }
       if (resData.error === 'AUTH_INVALID') {
-        if (manual) showToast('Clave Privada incorrecta. Debe coincidir con SYNC_SECRET.');
+        try { localStorage.setItem(KEYS.lastSyncError, 'AUTH_INVALID'); } catch (_) {}
+        if (manual) showToast('Clave Privada incorrecta (revisá mayúsculas o espacios).');
         return;
       }
 
       if (resData.ok && resData.state) {
+        try { localStorage.removeItem(KEYS.lastSyncError); } catch (_) {}
         mergeRemoteCloudState(resData.state);
         if (shouldPush) clearCloudDirty();
         try { localStorage.setItem(KEYS.lastSync, resData.syncedAt || new Date().toISOString()); } catch (_) {}
@@ -1090,14 +1129,20 @@
           const sheetsNote = resData.sheetsUpdated ? ` · ${resData.sheetsUpdated} fila(s) en Sheet` : '';
           showToast(`Sincronizado PC ↔ iPhone${sheetsNote}`);
         }
-      } else if (manual) {
-        showToast('Actualizá tu Apps Script con gym/apps_script_sync.gs (Nueva versión).');
+      } else {
+        try { localStorage.setItem(KEYS.lastSyncError, String(resData.error || 'Versión Apps Script desactualizada')); } catch (_) {}
+        if (manual) showToast('Actualizá tu Apps Script con gym/apps_script_sync.gs (Nueva versión).');
       }
     } catch (_) {
+      try { localStorage.setItem(KEYS.lastSyncError, 'Error de red o CORS'); } catch (_) {}
       if (manual) showToast('No se pudo conectar con Apps Script. Revisá internet o la URL.');
     } finally {
       syncBusy = false;
       renderHome();
+      if (syncQueuedWhileBusy) {
+        syncQueuedWhileBusy = false;
+        setTimeout(() => syncWithSheets(false), 200);
+      }
     }
   }
 

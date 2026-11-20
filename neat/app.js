@@ -381,12 +381,18 @@
     notifyParentOrStandalone(true, dateIso);
   }
 
-  function saveDraft() {
-    draft.updatedAt = new Date().toISOString();
+  function saveDraft(silent = false) {
+    if (!silent) {
+      draft.updatedAt = new Date().toISOString();
+    } else if (draft.updatedAt === undefined) {
+      draft.updatedAt = '';
+    }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch (_) {}
-    notifyParentOrStandalone(true, null);
+    if (!silent) {
+      notifyParentOrStandalone(true, null);
+    }
   }
 
   window.addEventListener('message', (e) => {
@@ -449,7 +455,7 @@
       };
     }
 
-    saveDraft();
+    saveDraft(true);
     syncCloseDayInputsFromDate(activeDate);
     syncMeasureInputsFromDate(measDateEl.value);
   }
@@ -631,14 +637,16 @@
       id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       ...item
     });
-    saveDraft();
+    draft.explicitClear = false;
+    saveDraft(false);
     renderToday();
     showToast(`+${fmtInt.format(item.steps)} pasos sumados (${item.label})`);
   }
 
   function removeActivityFromDraft(itemId) {
     draft.items = draft.items.filter((x) => x.id !== itemId);
-    saveDraft();
+    draft.explicitClear = draft.items.length === 0;
+    saveDraft(false);
     renderToday();
   }
 
@@ -961,7 +969,7 @@
       date: dateIso,
       items: logs[dateIso] ? cloneItems(logs[dateIso].items) : []
     };
-    saveDraft();
+    saveDraft(true);
     syncCloseDayInputsFromDate(dateIso);
     renderToday();
   }
@@ -1161,7 +1169,8 @@
       });
     }
     const totalAdded = added.reduce((s, x) => s + x.steps, 0);
-    saveDraft();
+    draft.explicitClear = false;
+    saveDraft(false);
     renderToday();
     showToast(`+${fmtInt.format(totalAdded)} pasos agregados a hoy`);
   });
@@ -1182,7 +1191,8 @@
     if (!draft.items.length) return;
     if (!window.confirm('¿Limpiar las actividades cargadas en este borrador del día?')) return;
     draft.items = [];
-    saveDraft();
+    draft.explicitClear = true;
+    saveDraft(false);
     renderToday();
     showToast('Actividades del borrador limpiadas');
   });
