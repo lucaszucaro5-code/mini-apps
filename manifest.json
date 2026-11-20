@@ -1,13 +1,13 @@
 {
-  "name": "Mini Apps — Sistema Maestro",
-  "short_name": "Mini Apps",
-  "description": "Colección de mini apps personales offline para iPhone.",
+  "name": "Forma by Luxx",
+  "short_name": "Forma",
+  "description": "Centro de control físico offline-first: Home, Gym, NEAT y Meals.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1115",
-  "theme_color": "#0f1115",
+  "background_color": "#000000",
+  "theme_color": "#007AFF",
   "lang": "es-AR",
   "icons": [
     {

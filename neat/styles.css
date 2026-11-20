@@ -1,43 +1,52 @@
 :root {
-  --bg: #f4f5f7;
-  --surface-bright: #ffffff;
-  --surface-dim: #eceef2;
-  --on-surface: #111827;
-  --on-surface-variant: #6b7280;
-  --primary: #2563eb;
-  --accent-container: #dbeafe;
-  --positive: #047857;
-  --positive-container: #d1fae5;
-  --warning: #b45309;
-  --warning-container: #fef3c7;
-  --error: #dc2626;
-  --error-container: #fee2e2;
-  --chart-1: #2575fc;
-  --chart-3: #228a49;
-  --chart-8: #d97706;
-  --border: rgba(17, 24, 39, 0.08);
+  --bg: #F2F2F7;
+  --surface-bright: #FFFFFF;
+  --surface-dim: #E5E5EA;
+  --on-surface: #1C1C1E;
+  --on-surface-variant: #636366;
+  --primary: #007AFF;
+  --accent-container: rgba(0, 122, 255, 0.12);
+  --positive: #1E8E3E;
+  --positive-container: rgba(30, 142, 62, 0.13);
+  --warning: #C96A00;
+  --warning-container: rgba(217, 119, 6, 0.14);
+  --error: #D72B21;
+  --error-container: rgba(215, 43, 33, 0.12);
+  --chart-1: #007AFF;
+  --chart-3: #1E8E3E;
+  --chart-8: #D97706;
+  --border: rgba(60, 60, 67, 0.14);
   --r-s: 10px;
-  --r-m: 14px;
+  --r-m: 16px;
   --r-full: 999px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1115;
-    --surface-bright: #1a1d24;
-    --surface-dim: #252932;
-    --on-surface: #f3f4f6;
-    --on-surface-variant: #9ca3af;
-    --primary: #60a5fa;
-    --accent-container: #1e3a8a;
-    --positive: #34d399;
-    --positive-container: #064e3b;
-    --warning: #fbbf24;
-    --warning-container: #78350f;
-    --error: #f87171;
-    --error-container: #7f1d1d;
-    --border: rgba(255, 255, 255, 0.09);
+    --bg: #000000;
+    --surface-bright: #1C1C1E;
+    --surface-dim: #2C2C2E;
+    --on-surface: #F5F5F7;
+    --on-surface-variant: #AEAEB2;
+    --primary: #0A84FF;
+    --accent-container: rgba(10, 132, 255, 0.18);
+    --positive: #30D158;
+    --positive-container: rgba(48, 209, 88, 0.16);
+    --warning: #FF9F0A;
+    --warning-container: rgba(255, 159, 10, 0.18);
+    --error: #FF453A;
+    --error-container: rgba(255, 69, 58, 0.18);
+    --border: rgba(255, 255, 255, 0.14);
   }
+}
+
+body.is-embedded {
+  padding-top: 10px;
+  padding-bottom: 18px;
+}
+
+body.is-embedded .topbar {
+  display: none;
 }
 
 * {

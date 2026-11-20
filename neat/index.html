@@ -6,20 +6,25 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="NEAT v7.2">
-  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <title>Calculadora NEAT — Sistema Maestro v7.2</title>
+  <title>NEAT — Forma by Luxx</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <script>
+    if (new URLSearchParams(location.search).get('embedded') === '1') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
   <div class="widget-container">
     <header class="topbar">
       <div class="topbar-left">
-        <a class="back-link" href="../index.html" aria-label="Volver al menú de mini apps">← Apps</a>
-        <div class="app-heading">NEAT <span>· Sistema Maestro v7.2</span></div>
+        <a class="back-link" href="../index.html" aria-label="Volver a Forma by Luxx">‹ Forma</a>
+        <div class="app-heading">NEAT <span>· Forma by Luxx</span></div>
       </div>
       <div class="offline-pill" id="offline-pill">
         <span class="offline-dot" id="offline-dot"></span>

@@ -6,62 +6,72 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Gym v7.1">
-  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <title>Gym Tracker — Sistema Maestro v7.1</title>
+  <title>Gym — Forma by Luxx</title>
   <style>
     :root {
-      --bg: #f4f5f7;
-      --surface-bright: #ffffff;
-      --surface-dim: #eceef2;
-      --surface-card: #f8fafc;
-      --on-surface: #111827;
-      --on-surface-variant: #6b7280;
-      --primary: #2563eb;
-      --primary-strong: #1d4ed8;
-      --accent-container: #dbeafe;
-      --positive: #047857;
-      --positive-bright: #10b981;
-      --positive-container: #d1fae5;
-      --warn: #b45309;
-      --warn-container: #fef3c7;
-      --error: #dc2626;
-      --error-container: #fee2e2;
-      --spotify: #1db954;
+      --bg: #F2F2F7;
+      --surface-bright: #FFFFFF;
+      --surface-dim: #E5E5EA;
+      --surface-card: #F2F2F7;
+      --on-surface: #1C1C1E;
+      --on-surface-variant: #636366;
+      --primary: #007AFF;
+      --primary-strong: #0066CC;
+      --accent-container: rgba(0, 122, 255, 0.12);
+      --positive: #1E8E3E;
+      --positive-bright: #30D158;
+      --positive-container: rgba(30, 142, 62, 0.13);
+      --warn: #C96A00;
+      --warn-container: rgba(217, 119, 6, 0.14);
+      --error: #D72B21;
+      --error-container: rgba(215, 43, 33, 0.12);
+      --spotify: #1DB954;
       --spotify-container: rgba(29, 185, 84, 0.14);
-      --border: rgba(17, 24, 39, 0.08);
-      --shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+      --border: rgba(60, 60, 67, 0.14);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
       --r-s: 10px;
-      --r-m: 14px;
+      --r-m: 16px;
       --r-l: 18px;
       --r-full: 999px;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #0f1115;
-        --surface-bright: #1a1d24;
-        --surface-dim: #252932;
-        --surface-card: #14171d;
-        --on-surface: #f3f4f6;
-        --on-surface-variant: #9ca3af;
-        --primary: #60a5fa;
-        --primary-strong: #3b82f6;
-        --accent-container: rgba(37, 99, 235, 0.22);
-        --positive: #34d399;
-        --positive-bright: #10b981;
-        --positive-container: rgba(6, 78, 59, 0.65);
-        --warn: #fbbf24;
-        --warn-container: rgba(180, 83, 9, 0.25);
-        --error: #f87171;
-        --error-container: rgba(127, 29, 29, 0.55);
-        --spotify: #1ed760;
+        --bg: #000000;
+        --surface-bright: #1C1C1E;
+        --surface-dim: #2C2C2E;
+        --surface-card: #1C1C1E;
+        --on-surface: #F5F5F7;
+        --on-surface-variant: #AEAEB2;
+        --primary: #0A84FF;
+        --primary-strong: #409CFF;
+        --accent-container: rgba(10, 132, 255, 0.18);
+        --positive: #30D158;
+        --positive-bright: #30D158;
+        --positive-container: rgba(48, 209, 88, 0.16);
+        --warn: #FF9F0A;
+        --warn-container: rgba(255, 159, 10, 0.18);
+        --error: #FF453A;
+        --error-container: rgba(255, 69, 58, 0.18);
+        --spotify: #1ED760;
         --spotify-container: rgba(30, 215, 96, 0.16);
-        --border: rgba(255, 255, 255, 0.08);
-        --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+        --border: rgba(255, 255, 255, 0.14);
+        --shadow: none;
       }
+    }
+    body.is-embedded {
+      padding-top: 8px;
+      padding-bottom: 94px;
+    }
+    body.is-embedded .topbar {
+      display: none;
+    }
+    body.is-embedded .session-hud {
+      top: 6px;
     }
 
     * {
@@ -1278,13 +1288,18 @@
   </style>
 </head>
 <body>
+  <script>
+    if (new URLSearchParams(location.search).get('embedded') === '1') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
   <div class="toast" id="toast"></div>
 
   <main class="app-shell">
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
-        <a class="back-link" href="../index.html">‹ Mini Apps</a>
+        <a class="back-link" href="../index.html">‹ Forma</a>
         <div class="app-heading">Gym Tracker <span id="app-version-badge">· v7.1</span></div>
       </div>
       <div class="topbar-right">
@@ -2410,6 +2425,11 @@
       function saveState() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (_) {}
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'forma-gym-updated' }, location.origin);
+          }
         } catch (_) {}
       }
 
@@ -4046,7 +4066,7 @@
           code_challenge_method: 'S256',
           code_challenge: challenge
         });
-        location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
+        (window.top || window).location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
       });
 
       document.getElementById('sp-disconnect-btn').addEventListener('click', () => {

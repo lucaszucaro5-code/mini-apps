@@ -5,312 +5,590 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Mini Apps">
-  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-title" content="Forma">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <title>Mini Apps — Sistema Maestro</title>
-  <style>
-    :root {
-      --bg: #f4f5f7;
-      --surface-bright: #ffffff;
-      --surface-dim: #e9ecf1;
-      --on-surface: #111827;
-      --on-surface-variant: #6b7280;
-      --primary: #2563eb;
-      --accent-container: #dbeafe;
-      --positive: #047857;
-      --positive-container: #d1fae5;
-      --border: rgba(17, 24, 39, 0.08);
-      --r-m: 16px;
-      --r-full: 999px;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f1115;
-        --surface-bright: #1a1d24;
-        --surface-dim: #252932;
-        --on-surface: #f3f4f6;
-        --on-surface-variant: #9ca3af;
-        --primary: #60a5fa;
-        --accent-container: #1e3a8a;
-        --positive: #34d399;
-        --positive-container: #064e3b;
-        --border: rgba(255, 255, 255, 0.08);
-      }
-    }
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-    html, body {
-      touch-action: manipulation;
-      margin: 0;
-      min-height: 100%;
-      background: var(--bg);
-      color: var(--on-surface);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
-    }
-    body {
-      padding:
-        max(18px, env(safe-area-inset-top))
-        max(16px, env(safe-area-inset-right))
-        max(28px, env(safe-area-inset-bottom))
-        max(16px, env(safe-area-inset-left));
-    }
-    .hub-container {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-    .hub-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .hub-eyebrow {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--primary);
-      margin-bottom: 4px;
-    }
-    .hub-title {
-      margin: 0;
-      font-size: 26px;
-      line-height: 1.15;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-    .hub-sub {
-      margin: 6px 0 0;
-      font-size: 14px;
-      color: var(--on-surface-variant);
-      line-height: 1.4;
-    }
-    .status-chip {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: var(--r-full);
-      font-size: 12px;
-      font-weight: 600;
-      background: var(--surface-bright);
-      color: var(--on-surface-variant);
-      border: 1px solid var(--border);
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--positive);
-    }
-    .apps-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .app-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 16px;
-      border-radius: var(--r-m);
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      text-decoration: none;
-      color: inherit;
-      transition: transform 0.12s ease, opacity 0.12s ease;
-    }
-    .app-card:active {
-      transform: scale(0.985);
-      opacity: 0.9;
-    }
-    .app-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 13px;
-      flex-shrink: 0;
-      display: block;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
-    }
-    .app-body {
-      flex: 1;
-      min-width: 0;
-    }
-    .app-top {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .app-name {
-      font-size: 16px;
-      font-weight: 650;
-      color: var(--on-surface);
-    }
-    .app-tag {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: var(--r-full);
-      background: var(--accent-container);
-      color: var(--primary);
-    }
-    .app-desc {
-      margin: 4px 0 0;
-      font-size: 13px;
-      line-height: 1.38;
-      color: var(--on-surface-variant);
-    }
-    .app-chevron {
-      font-size: 18px;
-      color: var(--on-surface-variant);
-      flex-shrink: 0;
-    }
-    .info-card {
-      background: var(--surface-bright);
-      border: 1px solid var(--border);
-      border-radius: var(--r-m);
-      padding: 14px 16px;
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--on-surface-variant);
-    }
-    .info-card strong {
-      color: var(--on-surface);
-    }
-    .info-card ol {
-      margin: 8px 0 0;
-      padding-left: 18px;
-    }
-    .info-card li + li {
-      margin-top: 4px;
-    }
-  </style>
+  <title>Forma by Luxx</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="hub-container">
-    <header class="hub-header">
-      <div>
-        <div class="hub-eyebrow">Sistema Maestro</div>
-        <h1 class="hub-title">Mini Apps Personales</h1>
-        <p class="hub-sub">Herramientas rápidas listas para usar desde la pantalla de inicio del iPhone, incluso sin conexión.</p>
-      </div>
-      <div class="status-chip" id="hub-status" aria-live="polite">
-        <span class="status-dot" id="hub-dot"></span>
-        <span id="hub-status-text">En línea</span>
+  <div class="forma-shell">
+    <!-- Top Header -->
+    <header class="forma-topbar">
+      <div class="forma-topbar-inner">
+        <div class="forma-brand">
+          <span class="forma-brand-name">Forma</span>
+          <span class="forma-brand-by">by Luxx</span>
+        </div>
+        <div class="forma-topbar-actions">
+          <button type="button" class="sync-pill" id="btn-open-sync-sheet" aria-label="Estado de sincronización y respaldos">
+            <span class="sync-dot" id="topbar-sync-dot"></span>
+            <span id="topbar-sync-label">Offline listo</span>
+          </button>
+        </div>
       </div>
     </header>
 
-    <section class="apps-grid" id="apps-grid" aria-label="Aplicaciones disponibles">
-      <!-- Renderizado desde el registro de mini apps -->
-    </section>
-
-    <section class="info-card" aria-label="Cómo instalar en iPhone">
-      <strong>Tip iPhone (pantalla completa):</strong>
-      <ol>
-        <li>Para instalar solo la Calculadora NEAT o Gym Tracker como app directa, tocala arriba, luego en Safari tocá <strong>Compartir</strong> y elegí <strong>Agregar a inicio</strong>.</li>
-        <li>O agregá este menú principal a inicio para acceder a todas tus mini apps desde un único ícono.</li>
-      </ol>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button id="hub-clear-cache-btn" type="button" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-dim);color:var(--on-surface);font-size:12px;font-weight:700;cursor:pointer;">↻ Limpiar caché y actualizar</button>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    // Registro central de mini apps: para sumar una nueva app, agregar una entrada aquí y precachearla en sw.js
-    const MINI_APPS = [
-      {
-        id: 'neat',
-        name: 'Calculadora NEAT',
-        tag: 'v7.2 · Registro Diario',
-        description: 'Pasos acumulados del día por actividad, cierre diario y registro de peso y cintura.',
-        href: './neat/',
-        icon: './neat/icons/apple-touch-icon.png'
-      },
-      {
-        id: 'gym',
-        name: 'Gym Tracker & Keep',
-        tag: 'v7.1 · Offline',
-        description: 'Torso/Pierna A-B, variantes, series 4x10-10-9-9, cronómetro de descanso, SportClub Δ, Spotify y Keep.',
-        href: './gym/',
-        icon: './gym/icons/apple-touch-icon.png'
-      }
-    ];
-
-    const grid = document.getElementById('apps-grid');
-    grid.innerHTML = MINI_APPS.map((app) => `
-      <a class="app-card" href="${app.href}">
-        <img class="app-icon" src="${app.icon}" alt="Ícono ${app.name}" width="56" height="56">
-        <div class="app-body">
-          <div class="app-top">
-            <span class="app-name">${app.name}</span>
-            <span class="app-tag">${app.tag}</span>
+    <!-- Main Views -->
+    <main class="forma-views">
+      <!-- ==================== TAB 1: HOME ==================== -->
+      <section id="view-home" class="forma-view is-active" aria-label="Panel General Home">
+        <div class="view-inner">
+          <div class="page-header">
+            <h1 class="page-title" id="home-greeting-title">Hoy</h1>
+            <p class="page-subtitle" id="home-subtitle">Cargando estado del protocolo...</p>
           </div>
-          <p class="app-desc">${app.description}</p>
+
+          <!-- Progress & Trend Hero -->
+          <article class="card">
+            <div class="hito-top">
+              <div>
+                <div class="sub-label">Peso actual</div>
+                <div class="weight-hero-val tabular">
+                  <span id="home-cur-weight">--</span><span class="weight-hero-unit">kg</span>
+                </div>
+              </div>
+              <span class="pill pill-green tabular" id="home-delta-pill">Sin datos</span>
+            </div>
+
+            <div class="hito-stats-row">
+              <div>
+                <div class="sub-label">Cintura</div>
+                <div class="hito-stat-val tabular" id="home-cur-waist">--</div>
+              </div>
+              <div>
+                <div class="sub-label">Prom. 7 días</div>
+                <div class="hito-stat-val tabular" id="home-avg-weight">--</div>
+              </div>
+              <div>
+                <div class="sub-label">Meta Hito 1</div>
+                <div class="hito-stat-val tabular" id="home-to-goal">70,7 kg</div>
+              </div>
+            </div>
+
+            <div class="progress-track" aria-label="Avance hacia Hito 1">
+              <div class="progress-fill is-green" id="home-goal-fill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-caption">
+              <span>Base 76,5 kg</span>
+              <span id="home-goal-pct">0% del camino a 70,7 kg</span>
+            </div>
+
+            <div class="chart-wrap">
+              <div class="chart-head">
+                <span class="sub-label">Tendencia de peso</span>
+                <span class="sub-label tabular" id="home-chart-range">Últimos 14 registros</span>
+              </div>
+              <svg id="home-weight-chart" class="weight-chart-svg" viewBox="0 0 320 116" role="img" aria-label="Gráfico de tendencia de peso"></svg>
+            </div>
+          </article>
+
+          <!-- 4 Pillars Summary Grid -->
+          <div class="pillars-grid">
+            <button type="button" class="pillar-tile" data-jump-tab="home-log">
+              <div class="pillar-top">
+                <span class="pillar-name">Pesaje hoy</span>
+                <span class="pillar-chevron" aria-hidden="true">›</span>
+              </div>
+              <div class="pillar-val tabular" id="tile-weight-val">--</div>
+              <div class="pillar-sub" id="tile-weight-sub">Tocar para cargar medidas</div>
+            </button>
+
+            <button type="button" class="pillar-tile" data-jump-tab="neat">
+              <div class="pillar-top">
+                <span class="pillar-name">NEAT hoy</span>
+                <span class="pillar-chevron" aria-hidden="true">›</span>
+              </div>
+              <div class="pillar-val tabular" id="tile-neat-val">0 pasos</div>
+              <div class="pillar-sub" id="tile-neat-sub">Meta: 8.000 – 10.000 pasos</div>
+            </button>
+
+            <button type="button" class="pillar-tile" data-jump-tab="meals">
+              <div class="pillar-top">
+                <span class="pillar-name">Meals hoy</span>
+                <span class="pillar-chevron" aria-hidden="true">›</span>
+              </div>
+              <div class="pillar-val tabular" id="tile-meals-val">2.316 kcal</div>
+              <div class="pillar-sub" id="tile-meals-sub">Plan congelado · 0 extras</div>
+            </button>
+
+            <button type="button" class="pillar-tile" data-jump-tab="gym">
+              <div class="pillar-top">
+                <span class="pillar-name">Gym · Sem 9</span>
+                <span class="pillar-chevron" aria-hidden="true">›</span>
+              </div>
+              <div class="pillar-val tabular" id="tile-gym-val">--</div>
+              <div class="pillar-sub" id="tile-gym-sub">Tocar para abrir rutina</div>
+            </button>
+          </div>
+
+          <!-- Quick Daily Log Card -->
+          <div class="section-heading-row" id="home-log-anchor">
+            <h2 class="section-heading">Registro Diario</h2>
+            <span class="section-meta" id="log-form-status">Listo para cargar</span>
+          </div>
+
+          <article class="card">
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="hl-date">Fecha</label>
+                <input id="hl-date" class="input" type="date">
+              </div>
+              <div class="field">
+                <label for="hl-steps">Pasos NEAT</label>
+                <input id="hl-steps" class="input" type="number" min="0" max="60000" step="50" inputmode="numeric" placeholder="Automático de NEAT">
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="field">
+                <label for="hl-weight">Peso (kg)</label>
+                <input id="hl-weight" class="input" type="number" step="0.05" min="40" max="150" inputmode="decimal" placeholder="Ej. 72,3">
+              </div>
+              <div class="field">
+                <label for="hl-waist">Cintura (cm)</label>
+                <input id="hl-waist" class="input" type="number" step="0.1" min="50" max="150" inputmode="decimal" placeholder="Ej. 85,5">
+              </div>
+              <div class="field">
+                <label for="hl-fat">% Grasa (opc.)</label>
+                <input id="hl-fat" class="input" type="number" step="0.1" min="5" max="45" inputmode="decimal" placeholder="Ej. 17,0">
+              </div>
+            </div>
+
+            <div class="field" style="margin-bottom: 12px;">
+              <label for="hl-note">Nota del día</label>
+              <input id="hl-note" class="input" type="text" placeholder="Ej. Ayunas post-Torso B, buen descanso">
+            </div>
+
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary btn-grow" id="btn-save-home-log">
+                Guardar registro
+              </button>
+              <button type="button" class="btn" id="btn-new-home-log" title="Limpiar para fecha nueva">
+                Limpiar
+              </button>
+            </div>
+          </article>
+
+          <!-- Sync & Export Box -->
+          <div class="section-heading-row">
+            <h2 class="section-heading">Respaldo y Google Sheets</h2>
+            <span class="section-meta tabular" id="sync-queue-badge">0 pendientes</span>
+          </div>
+
+          <article class="card">
+            <div class="inset-row-desc" id="home-sync-summary" style="margin-bottom: 10px;">
+              Los datos se guardan primero en este dispositivo sin conexión. Cuando haya internet, se sincronizan con Google Sheets.
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary btn-sm btn-grow" id="btn-sync-now">Sincronizar con Sheets</button>
+              <button type="button" class="btn btn-sm" id="btn-export-csv">Planilla CSV</button>
+              <button type="button" class="btn btn-sm" id="btn-export-json">Backup JSON</button>
+            </div>
+          </article>
+
+          <!-- Historical Log List -->
+          <div class="section-heading-row">
+            <h2 class="section-heading">Historial</h2>
+            <span class="section-meta tabular" id="home-history-count">0 días</span>
+          </div>
+
+          <div class="segmented" role="tablist" aria-label="Filtrar historial">
+            <button type="button" class="seg-btn is-active" data-log-filter="all">Todos</button>
+            <button type="button" class="seg-btn" data-log-filter="weight">Con peso</button>
+            <button type="button" class="seg-btn" data-log-filter="waist">Auditorías</button>
+          </div>
+
+          <div id="home-history-list" class="inset-list"></div>
         </div>
-        <span class="app-chevron" aria-hidden="true">›</span>
-      </a>
-    `).join('');
+      </section>
 
-    const statusText = document.getElementById('hub-status-text');
-    const statusDot = document.getElementById('hub-dot');
+      <!-- ==================== TAB 2: GYM ==================== -->
+      <section id="view-gym" class="forma-view is-frame-view" aria-label="Entrenamiento Gym">
+        <iframe id="frame-gym" class="module-iframe" title="Gym Tracker Sistema Maestro v7.1" src="about:blank"></iframe>
+      </section>
 
-    function updateOnlineBadge(swReady = false) {
-      if (!navigator.onLine) {
-        statusText.textContent = 'Modo offline';
-        statusDot.style.background = '#d97706';
-      } else if (swReady) {
-        statusText.textContent = 'Offline listo';
-        statusDot.style.background = 'var(--positive)';
-      } else {
-        statusText.textContent = 'En línea';
-        statusDot.style.background = 'var(--positive)';
-      }
-    }
+      <!-- ==================== TAB 3: NEAT ==================== -->
+      <section id="view-neat" class="forma-view is-frame-view" aria-label="Actividad NEAT">
+        <iframe id="frame-neat" class="module-iframe" title="Calculadora NEAT" src="about:blank"></iframe>
+      </section>
 
-    window.addEventListener('online', () => updateOnlineBadge(true));
-    window.addEventListener('offline', () => updateOnlineBadge(true));
+      <!-- ==================== TAB 4: MEALS ==================== -->
+      <section id="view-meals" class="forma-view" aria-label="Nutrición y Balanza">
+        <div class="view-inner">
+          <div class="page-header">
+            <h1 class="page-title">Meals</h1>
+            <p class="page-subtitle">Plan Sistema Maestro v7.1 · 2.316 kcal · 156,4 g P · 288 g C · 65 g G</p>
+          </div>
 
-    async function clearAppCacheAndReload() {
-      try {
-        if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map((r) => r.unregister()));
-        }
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        }
-      } catch (_) {}
-      location.replace(location.pathname.replace(/index\.html$/, '') + '?updated=' + Date.now());
-    }
+          <!-- MODULE 1: RAW <-> COOKED CALCULATOR -->
+          <div class="section-heading-row">
+            <h2 class="section-heading">Calculadora Crudo ↔ Cocido</h2>
+            <span class="section-meta">Balanza de cocina</span>
+          </div>
 
-    document.getElementById('hub-clear-cache-btn').addEventListener('click', () => {
-      statusText.textContent = 'Actualizando...';
-      clearAppCacheAndReload();
-    });
+          <article class="card">
+            <div class="chip-scroller" id="rc-quota-chips" aria-label="Cuotas del plan"></div>
 
-    if (new URLSearchParams(location.search).get('reset') === '1') {
-      statusText.textContent = 'Limpiando caché...';
-      clearAppCacheAndReload();
-    } else if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('./sw.js', { scope: './' })
-        .then(() => navigator.serviceWorker.ready)
-        .then(() => updateOnlineBadge(true))
-        .catch(() => updateOnlineBadge(false));
-    } else {
-      updateOnlineBadge(false);
-    }
-  </script>
+            <div class="segmented" role="tablist" aria-label="Modo de factor de cocción">
+              <button type="button" class="seg-btn is-active" data-rc-mode="witness">Papa / Unidad Testigo</button>
+              <button type="button" class="seg-btn" data-rc-mode="saved">Factores Guardados</button>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="rc-target-grams" id="rc-target-label">Tu cuota en crudo (g)</label>
+                <input id="rc-target-grams" class="input" type="number" min="1" max="3000" step="1" inputmode="decimal" value="330">
+              </div>
+              <div class="field">
+                <label for="rc-direction">Dirección</label>
+                <select id="rc-direction" class="select">
+                  <option value="raw_to_cooked">Tengo cuota en crudo → Cocido</option>
+                  <option value="cooked_to_raw">Tengo cuota en cocido → Crudo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Subpanel A: Witness Potato / Sample calibration -->
+            <div id="rc-witness-panel">
+              <div class="form-grid-2">
+                <div class="field">
+                  <label for="rc-witness-raw">Testigo en crudo (g)</label>
+                  <input id="rc-witness-raw" class="input" type="number" min="1" max="3000" step="1" inputmode="decimal" value="200" placeholder="Ej. 200">
+                </div>
+                <div class="field">
+                  <label for="rc-witness-cooked">Mismo testigo cocido (g)</label>
+                  <input id="rc-witness-cooked" class="input" type="number" min="1" max="3000" step="1" inputmode="decimal" value="152" placeholder="Ej. 152">
+                </div>
+              </div>
+            </div>
+
+            <!-- Subpanel B: Saved Factors Library -->
+            <div id="rc-saved-panel" style="display:none;">
+              <div class="field" style="margin-bottom: 10px;">
+                <label for="rc-factor-select">Alimento y método de cocción</label>
+                <select id="rc-factor-select" class="select"></select>
+              </div>
+            </div>
+
+            <!-- Main Output Box -->
+            <div class="scale-result-box">
+              <div class="scale-result-top">
+                <div>
+                  <div class="sub-label" id="rc-out-kicker">Resultado para servir hoy</div>
+                  <div class="scale-result-main tabular" id="rc-out-main">251 g cocidos</div>
+                </div>
+                <span class="pill pill-blue tabular" id="rc-factor-pill">Factor 0,76x</span>
+              </div>
+              <div class="scale-result-sub" id="rc-out-explain">
+                Para cubrir tus 330 g crudos con una merma del -24%.
+              </div>
+
+              <!-- Quick Reverse Verification on Plate -->
+              <div class="scale-result-detail">
+                <div class="field">
+                  <label for="rc-plate-check">Ya serví cocido (g)</label>
+                  <input id="rc-plate-check" class="input input-sm" type="number" min="0" max="3000" step="1" inputmode="decimal" placeholder="Opcional">
+                </div>
+                <div style="display:flex;flex-direction:column;justify-content:center;">
+                  <div class="sub-label">Equivalencia real</div>
+                  <div class="tabular" style="font-size:14px;font-weight:650;" id="rc-plate-result">Ingresá gramos del plato</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-row" style="margin-top: 10px;">
+              <button type="button" class="btn btn-sm btn-grow" id="btn-save-factor">+ Guardar factor en biblioteca</button>
+            </div>
+          </article>
+
+          <!-- MODULE 2: PARTIAL REPLACEMENTS & EQUIVALENCES -->
+          <div class="section-heading-row">
+            <h2 class="section-heading">Reemplazos y Equivalencias</h2>
+            <span class="section-meta">Descuento exacto en balanza</span>
+          </div>
+
+          <article class="card">
+            <div class="segmented" role="tablist" aria-label="Herramientas de reemplazo">
+              <button type="button" class="seg-btn is-active" data-eq-tab="calc">Reemplazo Parcial</button>
+              <button type="button" class="seg-btn" data-eq-tab="matrix">Matriz v7.1</button>
+              <button type="button" class="seg-btn" data-eq-tab="custom">Mis Equivalencias</button>
+            </div>
+
+            <!-- Eq Tab 1: Partial Replacement Calculator -->
+            <div id="eq-panel-calc">
+              <div class="field" style="margin-bottom: 10px;">
+                <label for="swap-base-select">Alimento base del plan a reducir</label>
+                <select id="swap-base-select" class="select"></select>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="field">
+                  <label for="swap-item-select">Qué vas a sumar</label>
+                  <select id="swap-item-select" class="select"></select>
+                </div>
+                <div class="field">
+                  <label for="swap-qty" id="swap-qty-label">Unidades / porciones</label>
+                  <input id="swap-qty" class="input" type="number" min="0.25" max="1000" step="0.5" inputmode="decimal" value="1">
+                </div>
+              </div>
+
+              <div class="form-grid-2" id="swap-custom-item-row" style="display:none;">
+                <div class="field">
+                  <label for="swap-custom-name">Nombre del alimento extra</label>
+                  <input id="swap-custom-name" class="input input-sm" type="text" placeholder="Ej. Alfajor o Galletita">
+                </div>
+                <div class="field">
+                  <label for="swap-custom-kcal">Kcal de esa porción</label>
+                  <input id="swap-custom-kcal" class="input input-sm" type="number" min="1" max="2000" step="1" inputmode="decimal" placeholder="Ej. 120">
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="field">
+                  <label for="swap-mode">Criterio de ajuste</label>
+                  <select id="swap-mode" class="select">
+                    <option value="kcal">Por Calorías (Isocalórico)</option>
+                    <option value="carbs">Por Carbohidratos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Meta del alimento base</label>
+                  <div class="input tabular" style="display:flex;align-items:center;background:var(--surface-3);" id="swap-base-target-readonly">75 g · 277 kcal</div>
+                </div>
+              </div>
+
+              <div class="scale-result-box">
+                <div class="scale-result-top">
+                  <div>
+                    <div class="sub-label">Pesá en la balanza</div>
+                    <div class="scale-result-main tabular" id="swap-out-main">48 g de Avena</div>
+                  </div>
+                  <span class="pill pill-green tabular" id="swap-discount-pill">Descontás 27 g</span>
+                </div>
+                <div class="scale-result-sub" id="swap-out-explain">
+                  Sumás 1 Turrón de maní (98 kcal) y pesás 48 g de Avena (179 kcal).
+                </div>
+              </div>
+
+              <div class="btn-row" style="margin-top: 10px;">
+                <button type="button" class="btn btn-sm btn-grow" id="btn-save-custom-eq">+ Guardar en Mis Equivalencias</button>
+              </div>
+            </div>
+
+            <!-- Eq Tab 2: Official Matrix v7.1 -->
+            <div id="eq-panel-matrix" style="display:none;">
+              <div id="official-matrix-list" class="inset-list" style="margin-bottom:0;"></div>
+            </div>
+
+            <!-- Eq Tab 3: Custom User Equivalences -->
+            <div id="eq-panel-custom" style="display:none;">
+              <div class="form-grid-2" style="margin-bottom: 10px;">
+                <input id="new-eq-title" class="input input-sm" type="text" placeholder="Ej. 1 Turrón 25g = 27g Avena">
+                <div class="btn-row">
+                  <input id="new-eq-detail" class="input input-sm" style="flex:1;" type="text" placeholder="Nota o macros">
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-add-custom-eq">+</button>
+                </div>
+              </div>
+              <div id="custom-eq-list" class="inset-list" style="margin-bottom:0;"></div>
+            </div>
+          </article>
+
+          <!-- MODULE 3: WEEKEND / EXTRA FOODS LOGGER -->
+          <div class="section-heading-row">
+            <h2 class="section-heading">Extras de Fin de Semana</h2>
+            <span class="section-meta tabular" id="extras-date-label">Hoy</span>
+          </div>
+
+          <article class="card">
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="ex-date">Fecha del extra</label>
+                <input id="ex-date" class="input" type="date">
+              </div>
+              <div class="field">
+                <label>Presets rápidos</label>
+                <select id="ex-preset-select" class="select">
+                  <option value="">Elegir rápido o cargar...</option>
+                  <option value="Porción pizza muzzarella|280|12|32|11">1 porción de pizza (~280 kcal)</option>
+                  <option value="Empanadas (2 u)|520|22|52|24">2 empanadas (~520 kcal)</option>
+                  <option value="Helado artesanal (150g)|330|5|38|17">Helado 150 g (~330 kcal)</option>
+                  <option value="Cerveza (1 pinta)|210|2|18|0">Cerveza 1 pinta (~210 kcal)</option>
+                  <option value="Asado delta sobre cena|420|30|5|30">Asado extra vs cena (~420 kcal)</option>
+                  <option value="Turrón de maní (25g)|98|1.3|19|1.8">1 Turrón de maní (~98 kcal)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="ex-name">Descripción del alimento</label>
+                <input id="ex-name" class="input" type="text" placeholder="Ej. Cena afuera / Helado">
+              </div>
+              <div class="field">
+                <label for="ex-kcal">Calorías extra (kcal)</label>
+                <input id="ex-kcal" class="input" type="number" min="1" max="5000" step="1" inputmode="decimal" placeholder="Ej. 350">
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="field">
+                <label for="ex-prot">Prot (g)</label>
+                <input id="ex-prot" class="input input-sm" type="number" min="0" max="300" step="0.5" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label for="ex-carbs">Carbs (g)</label>
+                <input id="ex-carbs" class="input input-sm" type="number" min="0" max="500" step="0.5" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label for="ex-fat">Grasas (g)</label>
+                <input id="ex-fat" class="input input-sm" type="number" min="0" max="300" step="0.5" inputmode="decimal" placeholder="0">
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-full" id="btn-add-extra-food">+ Registrar extra</button>
+
+            <div class="extra-summary-bar" style="margin-top: 12px;">
+              <div class="stat-mini-box">
+                <div class="sub-label">Total del día (Base 2.316)</div>
+                <div class="stat-mini-val tabular" id="ex-day-total">2.316 kcal</div>
+              </div>
+              <div class="stat-mini-box">
+                <div class="sub-label">Balance déficit semanal</div>
+                <div class="stat-mini-val tabular" id="ex-week-deficit">-3.808 kcal</div>
+              </div>
+            </div>
+
+            <div id="ex-list" class="inset-list" style="margin-bottom:0;"></div>
+          </article>
+
+          <!-- MODULE 4: PHOTO CAPTURE UI (GEMINI READY - NOT WIRED YET) -->
+          <div class="section-heading-row">
+            <h2 class="section-heading">Carga por Foto</h2>
+            <span class="pill pill-neutral">UI lista</span>
+          </div>
+
+          <article class="card">
+            <div class="photo-dropzone">
+              <div id="meal-photo-preview-wrap"></div>
+              <p id="meal-photo-empty-text" class="inset-row-desc" style="margin: 0 0 10px;">
+                Sacá una foto a un plato o tabla nutricional para dejar preparada la carga visual con Gemini IA.
+              </p>
+              <input id="in-meal-photo" type="file" accept="image/*" capture="environment" style="display:none;">
+              <div class="btn-row" style="justify-content:center;">
+                <button type="button" class="btn btn-sm" id="btn-pick-meal-photo">Elegir o sacar foto</button>
+                <button type="button" class="btn btn-sm btn-ghost-danger" id="btn-clear-meal-photo" style="display:none;">Quitar</button>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom: 10px;">
+              <label for="meal-photo-note">Contexto opcional de la foto</label>
+              <input id="meal-photo-note" class="input input-sm" type="text" placeholder="Ej. Etiqueta nutricional o porción de restaurante">
+            </div>
+            <button type="button" class="btn btn-full" id="btn-analyze-gemini-soon" disabled>
+              Analizar con Gemini IA (Próximamente)
+            </button>
+            <div class="sub-label" style="margin-top: 6px; text-align: center;">
+              Interfaz local preparada sin conexión a API externa todavía.
+            </div>
+          </article>
+
+          <!-- MODULE 5: FIXED PLAN REFERENCE -->
+          <article class="card">
+            <details class="menu-details">
+              <summary>
+                <span>Menú Fijo Diario (Sistema Maestro v7.1)</span>
+                <span class="sub-label">Ver horarios y gramos ⌄</span>
+              </summary>
+              <div id="fixed-menu-list" style="margin-top: 8px;"></div>
+            </details>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Tab Bar (iOS HIG) -->
+    <nav class="bottom-tabbar" aria-label="Navegación principal">
+      <div class="tabbar-grid">
+        <button type="button" class="tabbar-item is-active" data-tab="home" aria-label="Home">
+          <svg class="tabbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 10.5L12 3l9 7.5"></path>
+            <path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"></path>
+          </svg>
+          <span class="tabbar-label">Home</span>
+        </button>
+
+        <button type="button" class="tabbar-item" data-tab="gym" aria-label="Gym">
+          <span class="tabbar-dot" id="dot-gym-active"></span>
+          <svg class="tabbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"></path>
+          </svg>
+          <span class="tabbar-label">Gym</span>
+        </button>
+
+        <button type="button" class="tabbar-item" data-tab="neat" aria-label="NEAT">
+          <span class="tabbar-dot" id="dot-neat-active"></span>
+          <svg class="tabbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 13h4l2.5-6 4 10 2.5-4H21"></path>
+          </svg>
+          <span class="tabbar-label">NEAT</span>
+        </button>
+
+        <button type="button" class="tabbar-item" data-tab="meals" aria-label="Meals">
+          <svg class="tabbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v18M5 8h14M6 8l-2 6h4l-2-6M18 8l-2 6h4l-2-6M8 21h8"></path>
+          </svg>
+          <span class="tabbar-label">Meals</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Sync & Backup Modal Sheet -->
+  <div class="sheet-backdrop" id="sync-sheet" role="dialog" aria-modal="true" aria-labelledby="sync-sheet-title">
+    <div class="sheet-panel">
+      <div class="card-header">
+        <h3 class="card-title" id="sync-sheet-title">Sincronización y Respaldo Offline</h3>
+        <button type="button" class="btn btn-sm" id="btn-close-sync-sheet">Cerrar</button>
+      </div>
+
+      <p class="inset-row-desc" style="margin-top:0;">
+        La app funciona 100% sin internet guardando tus datos localmente. Cuando hay señal, sincroniza tus registros diarios con la planilla <strong>Sistema Maestro v7.1</strong>.
+      </p>
+
+      <div class="field" style="margin-bottom: 10px;">
+        <label for="sync-endpoint-input">URL Google Apps Script (/exec)</label>
+        <input id="sync-endpoint-input" class="input input-sm" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+
+      <div class="btn-row" style="margin-bottom: 12px;">
+        <button type="button" class="btn btn-primary btn-sm btn-grow" id="btn-sheet-sync-now">Sincronizar ahora</button>
+        <button type="button" class="btn btn-sm" id="btn-sheet-save-url">Guardar URL</button>
+      </div>
+
+      <div class="card-header" style="margin-bottom: 8px; padding-top: 10px; border-top: 0.5px solid var(--separator);">
+        <span class="card-title">Planillas y Archivos de Respaldo</span>
+      </div>
+
+      <div class="form-grid-2" style="margin-bottom: 10px;">
+        <button type="button" class="btn btn-sm" id="btn-sheet-csv">Exportar Planilla CSV</button>
+        <button type="button" class="btn btn-sm" id="btn-sheet-copy">Copiar para Sheets</button>
+        <button type="button" class="btn btn-sm" id="btn-sheet-json-out">Exportar JSON</button>
+        <button type="button" class="btn btn-sm" id="btn-sheet-json-in">Importar JSON</button>
+      </div>
+      <input id="in-sheet-import-json" type="file" accept="application/json,.json" style="display:none;">
+
+      <div style="padding-top: 10px; border-top: 0.5px solid var(--separator); display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <span class="sub-label" id="sheet-cache-info">Caché PWA lista</span>
+        <button type="button" class="btn btn-sm" id="btn-force-app-update">Actualizar caché app</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="forma-toast" class="forma-toast" role="status" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
 </body>
 </html>

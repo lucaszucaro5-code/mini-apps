@@ -1,0 +1,42 @@
+{
+  "name": "Forma by Luxx",
+  "version": "1.0.0",
+  "platform": "web",
+  "theme": "apple-hig-native",
+  "colors": {
+    "light": {
+      "bg": "#F2F2F7",
+      "surface": "#FFFFFF",
+      "surface2": "#E5E5EA",
+      "label": "#1C1C1E",
+      "labelSecondary": "#636366",
+      "separator": "rgba(60, 60, 67, 0.14)",
+      "accent": "#007AFF",
+      "positive": "#1E8E3E",
+      "warning": "#D97706",
+      "danger": "#D72B21"
+    },
+    "dark": {
+      "bg": "#000000",
+      "surface": "#1C1C1E",
+      "surface2": "#2C2C2E",
+      "label": "#F5F5F7",
+      "labelSecondary": "#AEAEB2",
+      "separator": "rgba(255, 255, 255, 0.14)",
+      "accent": "#0A84FF",
+      "positive": "#30D158",
+      "warning": "#FF9F0A",
+      "danger": "#FF453A"
+    }
+  },
+  "typography": {
+    "sans": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif",
+    "mono": "ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+  },
+  "radii": {
+    "card": "16px",
+    "control": "12px",
+    "button": "10px",
+    "pill": "999px"
+  }
+}

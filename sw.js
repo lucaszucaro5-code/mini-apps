@@ -1,8 +1,10 @@
-const CACHE_NAME = 'miniapps-sm-v13';
+const CACHE_NAME = 'forma-luxx-v14';
 
 const PRECACHE_URLS = [
   './',
   './index.html',
+  './styles.css',
+  './app.js',
   './manifest.json',
   './icons/icon.svg',
   './icons/apple-touch-icon.png',
@@ -70,7 +72,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Permitir bypass limpio cuando se solicita ?reset=1
   if (url.searchParams.get('reset') === '1') {
     event.respondWith(fetch(event.request));
     return;

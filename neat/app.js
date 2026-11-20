@@ -298,13 +298,32 @@
     try {
       localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
     } catch (_) {}
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'forma-logs-updated' }, location.origin);
+      }
+    } catch (_) {}
   }
 
   function saveDraft() {
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch (_) {}
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'forma-logs-updated' }, location.origin);
+      }
+    } catch (_) {}
   }
+
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'forma-logs-updated') return;
+    loadLogs();
+    syncCloseDayInputsFromDate(activeDate);
+    syncMeasureInputsFromDate(measDateEl.value);
+    renderToday();
+    renderLogs();
+  });
 
   function loadInitialDayState() {
     const todayIso = getLocalTodayIso();
